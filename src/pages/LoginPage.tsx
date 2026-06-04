@@ -81,6 +81,12 @@ export default function LoginPage({ onNavigate, inviteCode: propInviteCode }: Lo
     }
   };
 
+  const handleDevLogin = () => {
+    localStorage.setItem("accessToken", "dev-mock-token");
+    localStorage.setItem("refreshToken", "dev-mock-refresh");
+    onNavigate ? onNavigate("home") : setLocation("/");
+  };
+
   const handleKakaoLogin = () => {
     if (!window.Kakao?.Auth) {
       toast({
@@ -157,6 +163,17 @@ export default function LoginPage({ onNavigate, inviteCode: propInviteCode }: Lo
             )}
             {isLoading ? "로그인 중..." : "카카오로 시작하기"}
           </Button>
+
+          {import.meta.env.VITE_DEV_MODE === "true" && (
+            <Button
+              variant="outline"
+              onClick={handleDevLogin}
+              className="w-full"
+              data-testid="button-dev-login"
+            >
+              🛠 개발자 로그인 (백엔드 없이 화면 보기)
+            </Button>
+          )}
 
           <p className="text-xs text-center text-muted-foreground px-4">
             계속 진행하면 낙낙의{" "}

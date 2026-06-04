@@ -32,7 +32,7 @@ export default function InviteFriendDialog({ open, onOpenChange }: InviteFriendD
   const fetchInviteCode = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("accessToken");
       const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });

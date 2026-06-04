@@ -88,7 +88,10 @@ export default function KakaoCallbackPage({ onNavigate }: KakaoCallbackPageProps
     // 로그인 성공 처리
     if (loginResult?.success && loginResult?.token) {
       // JWT 토큰을 localStorage에 저장
-      localStorage.setItem("token", loginResult.token);
+      if (loginResult.data?.accessToken) {
+        localStorage.setItem("accessToken", loginResult.data.accessToken);
+        localStorage.setItem("refreshToken", loginResult.data.refreshToken);
+      }
       
       // 메인 페이지로 이동
       if (onNavigate) {

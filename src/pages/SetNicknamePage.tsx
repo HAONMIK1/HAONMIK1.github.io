@@ -41,14 +41,14 @@ export default function SetNicknamePage({ onNavigate }: SetNicknamePageProps) {
     setIsSubmitting(true);
 
     try {
-      // sessionStorage에서 카카오 인가 코드와 초대코드 가져오기
-      const kakaoCode = sessionStorage.getItem("kakaoCode");
+      // sessionStorage에서 카카오 Access Token과 초대코드 가져오기
+      const kakaoAccessToken = sessionStorage.getItem("kakaoAccessToken");
       const savedInviteCode = sessionStorage.getItem("inviteCode");
-      
-      if (!kakaoCode) {
+
+      if (!kakaoAccessToken) {
         toast({
           title: "오류",
-          description: "인가 코드를 찾을 수 없습니다. 다시 로그인해주세요.",
+          description: "카카오 토큰을 찾을 수 없습니다. 다시 로그인해주세요.",
           variant: "destructive",
         });
         onNavigate?.("login");
@@ -62,9 +62,9 @@ export default function SetNicknamePage({ onNavigate }: SetNicknamePageProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          token: kakaoCode,
+          kakaoAccessToken,
           nickname: trimmedNickname,
-          inviteCode: savedInviteCode || null, // sessionStorage에서 가져온 초대코드 (없으면 null로 백엔드에서 처리)
+          inviteCode: savedInviteCode || null,
         }),
       });
 
@@ -82,12 +82,13 @@ export default function SetNicknamePage({ onNavigate }: SetNicknamePageProps) {
       }
 
       // JWT 토큰 저장
-      if (result.token) {
-        localStorage.setItem("token", result.token);
+      if (result.data?.accessToken) {
+        localStorage.setItem("accessToken", result.data.accessToken);
+        localStorage.setItem("refreshToken", result.data.refreshToken);
       }
 
-      // sessionStorage에서 카카오 코드와 초대코드 제거
-      sessionStorage.removeItem("kakaoCode");
+      // sessionStorage 정리
+      sessionStorage.removeItem("kakaoAccessToken");
       sessionStorage.removeItem("inviteCode");
       
       toast({

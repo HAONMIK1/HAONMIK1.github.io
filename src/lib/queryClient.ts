@@ -1,42 +1,90 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-// Spring Boot API 서버 주소 (환경 변수에서 가져오기)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
-function getAuthHeaders(): Record<string, string> {
-  const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+const ACCESS_TOKEN_KEY = "accessToken";
+const REFRESH_TOKEN_KEY = "refreshToken";
+
+function getAccessToken(): string | null {
+  return typeof localStorage !== "undefined" ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
+}
+
+function getAuthHeaders(token?: string | null): Record<string, string> {
+  const t = token !== undefined ? token : getAccessToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = typeof localStorage !== "undefined"
+    ? localStorage.getItem(REFRESH_TOKEN_KEY)
+    : null;
+  if (!refreshToken) return null;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    const body = await res.json();
+    if (res.ok && body.data?.accessToken) {
+      localStorage.setItem(ACCESS_TOKEN_KEY, body.data.accessToken);
+      localStorage.setItem(REFRESH_TOKEN_KEY, body.data.refreshToken);
+      return body.data.accessToken;
+    }
+  } catch {}
+
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  return null;
 }
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    let message = res.statusText;
+    try {
+      const body = await res.clone().json();
+      message = body.message || body.error || message;
+    } catch {}
+    throw new Error(message);
   }
 }
 
-// URL에 API_BASE_URL을 자동으로 추가하는 헬퍼 함수
 function getFullUrl(url: string): string {
-  // 이미 전체 URL인 경우 그대로 반환
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
-  }
-  // 상대 경로인 경우 API_BASE_URL을 앞에 붙임
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
   return `${API_BASE_URL}${url}`;
+}
+
+async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
+  const doFetch = (token: string | null) =>
+    fetch(url, {
+      ...options,
+      headers: { ...(options.headers as Record<string, string>), ...getAuthHeaders(token) },
+    });
+
+  let res = await doFetch(getAccessToken());
+
+  if (res.status === 401) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      res = await doFetch(newToken);
+    }
+  }
+
+  return res;
 }
 
 export async function apiRequest(
   method: string,
   url: string,
-  data?: unknown | undefined,
+  data?: unknown,
 ): Promise<Response> {
   const fullUrl = getFullUrl(url);
-  const res = await fetch(fullUrl, {
+  const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+
+  const res = await fetchWithAuth(fullUrl, {
     method,
-    headers: {
-      ...(data ? { "Content-Type": "application/json" } : {}),
-      ...getAuthHeaders(),
-    },
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -52,10 +100,7 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const fullUrl = getFullUrl(queryKey.join("/") as string);
-    const res = await fetch(fullUrl, {
-      credentials: "include",
-      headers: getAuthHeaders(),
-    });
+    const res = await fetchWithAuth(fullUrl, { credentials: "include" });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;
@@ -74,8 +119,6 @@ export const queryClient = new QueryClient({
       staleTime: Infinity,
       retry: false,
     },
-    mutations: {
-      retry: false,
-    },
+    mutations: { retry: false },
   },
 });

@@ -15,7 +15,6 @@ import AddRestaurantDialog from "@/components/AddRestaurantDialog";
 import LoginPage from "@/pages/LoginPage";
 import SetNicknamePage from "@/pages/SetNicknamePage";
 import RestaurantDetailPage from "@/pages/RestaurantDetailPage";
-import KakaoCallbackPage from "@/pages/KakaoCallbackPage";
 import SearchPage from "@/pages/SearchPage";
 
 // 보호된 라우트 컴포넌트
@@ -24,7 +23,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("accessToken");
     if (!token) {
       setLocation("/login");
       setIsAuthenticated(false);
@@ -89,9 +88,6 @@ function Router() {
       <Switch>
         <Route path="/login">
           {() => <LoginPage onNavigate={handleNavigation} />}
-        </Route>
-        <Route path="/auth/kakao/callback">
-          {() => <KakaoCallbackPage onNavigate={handleNavigation} />}
         </Route>
         <Route path="/set-nickname">
           {() => <SetNicknamePage onNavigate={handleNavigation} />}

@@ -31,7 +31,7 @@ interface RestaurantResult {
 }
 
 function getAuthHeaders(): Record<string, string> {
-  const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : null;
+  const token = typeof localStorage !== "undefined" ? localStorage.getItem("accessToken") : null;
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 

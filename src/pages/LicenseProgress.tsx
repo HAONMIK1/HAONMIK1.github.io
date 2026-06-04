@@ -60,13 +60,7 @@ export default function LicenseProgress({ onNavigate }: LicenseProgressProps = {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <TopHeader
-        location="강남구"
-        notificationCount={0}
-        onLocationClick={() => {}}
-        onNotificationClick={() => {}}
-        onSearch={() => {}}
-      />
+      <TopHeader />
 
       <div className="max-w-4xl mx-auto p-4">
         <div className="flex items-center gap-3 mb-6">

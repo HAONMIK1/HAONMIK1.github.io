@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import TopHeader from "@/components/TopHeader";
 import BottomNavigation from "@/components/BottomNavigation";
 import InviteFriendDialog from "@/components/InviteFriendDialog";
@@ -8,6 +9,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+
+function getAuthHeaders(): Record<string, string> {
+  const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 type NetworkFilter = "1st" | "2nd" | "3rd";
 
@@ -22,8 +30,21 @@ export default function DiscoveryFeed({ onNavigate, newRestaurants = [] }: Disco
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [showFriendsDialog, setShowFriendsDialog] = useState(false);
   const [displayedCount, setDisplayedCount] = useState(10);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isScrollLoading, setIsScrollLoading] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
+
+  // 피드 API 호출
+  const { data: feedData, isLoading: isFeedLoading } = useQuery({
+    queryKey: ["restaurants", "feed"],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/v1/restaurants/feed`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("피드 조회 실패");
+      return response.json();
+    },
+    retry: false,
+  });
 
   const toggleFilter = (filter: NetworkFilter) => {
     setNetworkFilters(prev => 
@@ -48,189 +69,86 @@ export default function DiscoveryFeed({ onNavigate, newRestaurants = [] }: Disco
     onNavigate?.(destination);
   };
 
-  const mockRestaurantsData = [
+  const fallbackRestaurantsData = [
     {
       restaurantId: "1",
       name: "우동진 역삼점",
-      latitude: 37.4979,
-      longitude: 127.0276,
       address: "서울특별시 강남구 역삼동 123-45",
       roadAddress: "서울특별시 강남구 테헤란로 123",
       category: "일식",
       placeUrl: "https://map.kakao.com/link/map/12345",
       ratingAverage: 4.0,
       reviews: [
-        {
-          userId: "u1",
-          nickname: "맛집탐방가",
-          distance: 1,
-          rating: 5,
-          recommendMenu: "가리아게 우동",
-          hashTag: "영수증",
-          content: "우동이 정말 찐지고 국물이 진하네요. 특히 가리아게가 바삭바삭해요!",
-          photoUrl: "https://images.unsplash.com/photo-1618841557871-b4664fbf0cb3?w=800&auto=format&fit=crop&q=80",
-          createdAt: "2024-11-10T10:00:00Z",
-        },
-        {
-          userId: "u2",
-          nickname: "점쩝박사",
-          distance: 1,
-          rating: 4,
-          recommendMenu: "카레우동",
-          hashTag: "안주",
-          content: "카레우동이 진짜 맛있어요! 양도 푸짐하고 가성비 최고입니다.",
-          photoUrl: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800&auto=format&fit=crop&q=80",
-          createdAt: "2024-11-10T09:30:00Z",
-        },
+        { userId: "u1", nickname: "맛집탐방가", distance: 1, rating: 5, recommendMenu: "가리아게 우동", hashTag: "영수증", content: "우동이 정말 찐지고 국물이 진하네요. 특히 가리아게가 바삭바삭해요!", photoUrl: "https://images.unsplash.com/photo-1618841557871-b4664fbf0cb3?w=800&auto=format&fit=crop&q=80", createdAt: "2024-11-10T10:00:00Z" },
+        { userId: "u2", nickname: "점쩝박사", distance: 1, rating: 4, recommendMenu: "카레우동", hashTag: "안주", content: "카레우동이 진짜 맛있어요! 양도 푸짐하고 가성비 최고입니다.", photoUrl: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800&auto=format&fit=crop&q=80", createdAt: "2024-11-10T09:30:00Z" },
       ],
     },
     {
       restaurantId: "2",
       name: "성수돈까스",
-      latitude: 37.5444,
-      longitude: 127.0557,
       address: "서울특별시 성수구 성수동 67-89",
       roadAddress: "서울특별시 성수구 연무장길 45",
       category: "일식",
       placeUrl: "https://map.kakao.com/link/map/67890",
       ratingAverage: 4.5,
       reviews: [
-        {
-          userId: "u3",
-          nickname: "한식러버",
-          distance: 2,
-          rating: 5,
-          recommendMenu: "치즈돈까스",
-          content: "간단하게 점심 먹기 좋은 곳이에요. 치즈돈까스가 정말 치고빠집니다.",
-          photoUrl: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=800&auto=format&fit=crop&q=80",
-          createdAt: "2024-11-10T12:15:00Z",
-        },
-        {
-          userId: "u4",
-          nickname: "돈까스매니아",
-          distance: 2,
-          rating: 4,
-          recommendMenu: "로제돈까스",
-          content: "로제소스가 정말 맛있어요. 부드러운 돈까스와 찰떡궁합!",
-          photoUrl: "https://images.unsplash.com/photo-1529042410759-befb1204b468?w=800&auto=format&fit=crop&q=80",
-          createdAt: "2024-11-10T11:00:00Z",
-        },
+        { userId: "u3", nickname: "한식러버", distance: 2, rating: 5, recommendMenu: "치즈돈까스", content: "간단하게 점심 먹기 좋은 곳이에요. 치즈돈까스가 정말 치고빠집니다.", photoUrl: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=800&auto=format&fit=crop&q=80", createdAt: "2024-11-10T12:15:00Z" },
+        { userId: "u4", nickname: "돈까스매니아", distance: 2, rating: 4, recommendMenu: "로제돈까스", content: "로제소스가 정말 맛있어요. 부드러운 돈까스와 찰떡궁합!", photoUrl: "https://images.unsplash.com/photo-1529042410759-befb1204b468?w=800&auto=format&fit=crop&q=80", createdAt: "2024-11-10T11:00:00Z" },
       ],
     },
     {
       restaurantId: "3",
       name: "홍대 떡볶이",
-      latitude: 37.5563,
-      longitude: 126.9236,
       address: "서울특별시 마포구 홍대입구",
       roadAddress: "서울특별시 마포구 양화로 123",
       category: "분식",
       placeUrl: "https://map.kakao.com/link/map/11111",
       ratingAverage: 4.2,
       reviews: [
-        {
-          userId: "u5",
-          nickname: "떡볶이매니아",
-          distance: 1,
-          rating: 4,
-          recommendMenu: "치즈떡볶이",
-          content: "매콤하면서도 달달해요! 치즈가 듬뿍 들어가서 고소하고 맛있어요.",
-          photoUrl: "https://images.unsplash.com/photo-1590301157890-4810ed352733?w=800&auto=format&fit=crop&q=80",
-          createdAt: "2024-11-09T18:30:00Z",
-        },
-        {
-          userId: "u6",
-          nickname: "분식킹",
-          distance: 2,
-          rating: 4,
-          recommendMenu: "로제떡볶이",
-          content: "로제떡볶이가 진짜 미쳤어요. 크림 소스랑 떡이 환상의 조합!",
-          photoUrl: "https://images.unsplash.com/photo-1607330289024-097b0faf01d7?w=800&auto=format&fit=crop&q=80",
-          createdAt: "2024-11-09T17:00:00Z",
-        },
+        { userId: "u5", nickname: "떡볶이매니아", distance: 1, rating: 4, recommendMenu: "치즈떡볶이", content: "매콤하면서도 달달해요! 치즈가 듬뿍 들어가서 고소하고 맛있어요.", photoUrl: "https://images.unsplash.com/photo-1590301157890-4810ed352733?w=800&auto=format&fit=crop&q=80", createdAt: "2024-11-09T18:30:00Z" },
+        { userId: "u6", nickname: "분식킹", distance: 2, rating: 4, recommendMenu: "로제떡볶이", content: "로제떡볶이가 진짜 미쳤어요. 크림 소스랑 떡이 환상의 조합!", photoUrl: "https://images.unsplash.com/photo-1607330289024-097b0faf01d7?w=800&auto=format&fit=crop&q=80", createdAt: "2024-11-09T17:00:00Z" },
       ],
     },
     {
       restaurantId: "4",
       name: "치킨 전문점",
-      latitude: 37.4979,
-      longitude: 127.0376,
       address: "서울특별시 강남구 역삼동",
       roadAddress: "서울특별시 강남구 테헤란로 456",
       category: "치킨",
       placeUrl: "https://map.kakao.com/link/map/22222",
       ratingAverage: 4.6,
       reviews: [
-        {
-          userId: "u7",
-          nickname: "치킨러버",
-          distance: 1,
-          rating: 5,
-          recommendMenu: "양념치킨",
-          content: "양념이 달콤하면서도 매콤해요! 바삭바삭한 튀김옷이 일품입니다.",
-          photoUrl: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80",
-          createdAt: "2024-11-09T20:00:00Z",
-        },
+        { userId: "u7", nickname: "치킨러버", distance: 1, rating: 5, recommendMenu: "양념치킨", content: "양념이 달콤하면서도 매콤해요! 바삭바삭한 튀김옷이 일품입니다.", photoUrl: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80", createdAt: "2024-11-09T20:00:00Z" },
       ],
     },
     {
       restaurantId: "5",
       name: "해물 찜 전문점",
-      latitude: 37.4883,
-      longitude: 127.0164,
       address: "서울특별시 서초구 방배동",
       roadAddress: "서울특별시 서초구 방배중앙로 89",
       category: "한식",
       placeUrl: "https://map.kakao.com/link/map/33333",
       ratingAverage: 4.4,
       reviews: [
-        {
-          userId: "u8",
-          nickname: "해물러버",
-          distance: 3,
-          rating: 4,
-          recommendMenu: "해물찜",
-          content: "싱싱한 해산물이 가득! 양념도 맛있고 양도 푸짐해요.",
-          photoUrl: "https://images.unsplash.com/photo-1559847844-5315695dadae?w=800&auto=format&fit=crop&q=80",
-          createdAt: "2024-11-08T19:00:00Z",
-        },
+        { userId: "u8", nickname: "해물러버", distance: 3, rating: 4, recommendMenu: "해물찜", content: "싱싱한 해산물이 가득! 양념도 맛있고 양도 푸짐해요.", photoUrl: "https://images.unsplash.com/photo-1559847844-5315695dadae?w=800&auto=format&fit=crop&q=80", createdAt: "2024-11-08T19:00:00Z" },
       ],
     },
     {
       restaurantId: "6",
       name: "감성 카페",
-      latitude: 37.5172,
-      longitude: 127.0473,
       address: "서울특별시 강남구 신사동",
       roadAddress: "서울특별시 강남구 압구정로 234",
       category: "카페",
       placeUrl: "https://map.kakao.com/link/map/44444",
       ratingAverage: 4.7,
       reviews: [
-        {
-          userId: "u9",
-          nickname: "카페마니아",
-          distance: 2,
-          rating: 5,
-          recommendMenu: "아인슈페너",
-          content: "분위기 정말 좋아요! 커피도 맛있고 디저트도 훌륭합니다.",
-          photoUrl: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&auto=format&fit=crop&q=80",
-          createdAt: "2024-11-08T15:00:00Z",
-        },
+        { userId: "u9", nickname: "카페마니아", distance: 2, rating: 5, recommendMenu: "아인슈페너", content: "분위기 정말 좋아요! 커피도 맛있고 디저트도 훌륭합니다.", photoUrl: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&auto=format&fit=crop&q=80", createdAt: "2024-11-08T15:00:00Z" },
       ],
     },
   ];
 
-  // 테스트를 위해 레스토랑 데이터를 반복 (총 30개 생성)
-  const expandedMockData = Array.from({ length: 5 }, (_, i) => 
-    mockRestaurantsData.map((restaurant, j) => ({
-      ...restaurant,
-      restaurantId: `${restaurant.restaurantId}-${i}`,
-      name: `${restaurant.name} ${i + 1}호점`,
-    }))
-  ).flat();
-
-  const allRestaurants = [...(newRestaurants || []), ...expandedMockData];
+  const baseRestaurants = feedData ?? fallbackRestaurantsData;
+  const allRestaurants = [...(newRestaurants || []), ...baseRestaurants];
 
   const networkCounts = {
     all: allRestaurants.length,
@@ -265,12 +183,11 @@ export default function DiscoveryFeed({ onNavigate, newRestaurants = [] }: Disco
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading) {
-          setIsLoading(true);
-          // 실제 API 호출 시뮬레이션 (500ms 딜레이)
+        if (entries[0].isIntersecting && hasMore && !isScrollLoading) {
+          setIsScrollLoading(true);
           setTimeout(() => {
             setDisplayedCount((prev) => prev + 10);
-            setIsLoading(false);
+            setIsScrollLoading(false);
           }, 500);
         }
       },
@@ -286,7 +203,7 @@ export default function DiscoveryFeed({ onNavigate, newRestaurants = [] }: Disco
         observer.unobserve(observerTarget.current);
       }
     };
-  }, [hasMore, isLoading]);
+  }, [hasMore, isScrollLoading]);
 
   // 필터 변경 시 displayedCount 리셋
   useEffect(() => {
@@ -371,7 +288,11 @@ export default function DiscoveryFeed({ onNavigate, newRestaurants = [] }: Disco
             {networkFilters.length === 0 && "맛집 없음"}
           </h2>
 
-          {filteredRestaurants.length === 0 ? (
+          {isFeedLoading ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+            </div>
+          ) : filteredRestaurants.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <p>해당 네트워크에 등록된 맛집이 없습니다.</p>
             </div>
@@ -394,7 +315,7 @@ export default function DiscoveryFeed({ onNavigate, newRestaurants = [] }: Disco
                   className="flex justify-center py-8"
                   data-testid="scroll-trigger"
                 >
-                  {isLoading && (
+                  {isScrollLoading && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Loader2 className="w-5 h-5 animate-spin" />
                       <span className="text-sm">로딩 중...</span>

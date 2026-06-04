@@ -16,6 +16,7 @@ import LoginPage from "@/pages/LoginPage";
 import SetNicknamePage from "@/pages/SetNicknamePage";
 import RestaurantDetailPage from "@/pages/RestaurantDetailPage";
 import KakaoCallbackPage from "@/pages/KakaoCallbackPage";
+import SearchPage from "@/pages/SearchPage";
 
 // 보호된 라우트 컴포넌트
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -105,7 +106,7 @@ function Router() {
         <Route path="/search">
           {() => (
             <ProtectedRoute>
-              <div>Search Page (TODO)</div>
+              <SearchPage onNavigate={handleNavigation} />
             </ProtectedRoute>
           )}
         </Route>

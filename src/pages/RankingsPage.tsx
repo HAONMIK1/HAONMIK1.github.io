@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import TopHeader from "@/components/TopHeader";
 import BottomNavigation from "@/components/BottomNavigation";
 import InviteFriendDialog from "@/components/InviteFriendDialog";
@@ -7,6 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, TrendingUp, Star } from "lucide-react";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+
+function getAuthHeaders(): Record<string, string> {
+  const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 interface RankingsPageProps {
   onNavigate?: (id: string) => void;
@@ -17,32 +25,45 @@ export default function RankingsPage({ onNavigate }: RankingsPageProps = {}) {
   const [activeTab, setActiveTab] = useState("weekly");
   const [showInviteDialog, setShowInviteDialog] = useState(false);
 
-  //todo: remove mock functionality
-  const generateRankings = (basePoints: number, count: number = 20) => {
-    const names = [
-      "김민수", "이지은", "박지성", "최영희", "정민호",
-      "송지은", "강동원", "한지민", "윤아", "태연",
-      "수지", "아이유", "지디", "빅뱅", "엑소",
-      "방탄", "트와이스", "레드벨벳", "블랙핑크", "뉴진스"
-    ];
-    
+  const generateFallbackRankings = (basePoints: number, count: number = 20) => {
+    const names = ["김민수","이지은","박지성","최영희","정민호","송지은","강동원","한지민","윤아","태연","수지","아이유","지디","빅뱅","엑소","방탄","트와이스","레드벨벳","블랙핑크","뉴진스"];
     return Array.from({ length: count }, (_, i) => ({
       rank: i + 1,
-      user: {
-        name: names[i % names.length],
-      },
+      user: { name: names[i % names.length] },
       points: basePoints - (i * 800),
-      reviews: 45 - (i * 2),
-      restaurants: 15 - Math.floor(i / 2),
     }));
   };
 
-  const monthlyRankings = generateRankings(25000, 20);
-  const weeklyRankings = generateRankings(12500, 20);
+  const { data: weeklyData } = useQuery({
+    queryKey: ["rankings", "weekly"],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/v1/rankings?type=weekly`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("주간 랭킹 조회 실패");
+      return response.json();
+    },
+    retry: false,
+  });
+
+  const { data: monthlyData } = useQuery({
+    queryKey: ["rankings", "monthly"],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/v1/rankings?type=monthly`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("월간 랭킹 조회 실패");
+      return response.json();
+    },
+    retry: false,
+  });
+
+  const weeklyRankings = weeklyData?.rankings ?? generateFallbackRankings(12500, 20);
+  const monthlyRankings = monthlyData?.rankings ?? generateFallbackRankings(25000, 20);
 
   const myRank = {
-    weekly: { rank: 7, points: 8500 },
-    monthly: { rank: 12, points: 18200 }
+    weekly: weeklyData?.myRank ?? { rank: 7, points: 8500 },
+    monthly: monthlyData?.myRank ?? { rank: 12, points: 18200 },
   };
 
   const currentRank = activeTab === "weekly" ? myRank.weekly : myRank.monthly;

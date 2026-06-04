@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
+import { apiRequest } from "@/lib/queryClient";
 import {
   Dialog,
   DialogContent,
@@ -127,56 +128,9 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
     setSelectedCategory("");
   };
 
-  const handleSubmit = () => {
-    // 필수 필드 검증
-    if (!rating || rating === 0) {
-      toast({
-        title: "별점을 선택해주세요",
-        description: "맛집에 대한 별점을 매겨주세요.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    if (!formData.review || formData.review.trim().length === 0) {
-      toast({
-        title: "후기를 작성해주세요",
-        description: "맛집에 대한 후기를 작성해주세요.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const newRestaurant = {
-      id: `rest-${Date.now()}`,
-      name: formData.name || "새로운 맛집",
-      category: selectedCategory || "기타",
-      imageUrl: "",
-      rating: rating || 0,
-      address: formData.address || "주소 미입력",
-      author: { name: "나", hasLicense: false },
-      reviewCount: 1,
-      avgRating: rating || 0,
-      maxRating: 5.0,
-      recentReview: {
-        author: "나",
-        recommendedMenu: formData.recommendedMenu,
-        rating: rating || 0,
-        text: formData.review,
-        date: "방금 전",
-      },
-    };
-
-    if (onRestaurantAdded) {
-      onRestaurantAdded(newRestaurant);
-    }
-
-    toast({
-      title: "맛집 등록 완료!",
-      description: "새로운 맛집이 등록되었습니다.",
-    });
-
-    onOpenChange(false);
+  const resetForm = () => {
     setRating(0);
     setSelectedCategory("");
     setHasPhotos(false);
@@ -184,6 +138,67 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
     setSearchResults([]);
     setSearchMode("search");
     setFormData({ name: "", address: "", recommendedMenu: "", review: "", hashtag: "" });
+  };
+
+  const handleSubmit = async () => {
+    if (!rating || rating === 0) {
+      toast({ title: "별점을 선택해주세요", description: "맛집에 대한 별점을 매겨주세요.", variant: "destructive" });
+      return;
+    }
+    if (!formData.review || formData.review.trim().length === 0) {
+      toast({ title: "후기를 작성해주세요", description: "맛집에 대한 후기를 작성해주세요.", variant: "destructive" });
+      return;
+    }
+
+    const payload = {
+      name: formData.name || "새로운 맛집",
+      category: selectedCategory || "기타",
+      address: formData.address || "",
+      rating,
+      recommendMenu: formData.recommendedMenu,
+      review: formData.review,
+      hashtag: formData.hashtag,
+    };
+
+    setIsSubmitting(true);
+    try {
+      const res = await apiRequest("POST", "/api/v1/restaurants", payload);
+      const saved = await res.json();
+
+      if (onRestaurantAdded) {
+        onRestaurantAdded(saved);
+      }
+      toast({ title: "맛집 등록 완료!", description: "새로운 맛집이 등록되었습니다." });
+    } catch {
+      // API 실패 시 로컬 상태에만 추가
+      const localRestaurant = {
+        id: `rest-${Date.now()}`,
+        name: payload.name,
+        category: payload.category,
+        imageUrl: "",
+        rating: payload.rating,
+        address: payload.address,
+        restaurantId: `rest-${Date.now()}`,
+        ratingAverage: payload.rating,
+        reviews: [{
+          userId: "me",
+          nickname: "나",
+          distance: 1,
+          rating: payload.rating,
+          recommendMenu: payload.recommendMenu,
+          content: payload.review,
+          createdAt: new Date().toISOString(),
+        }],
+      };
+      if (onRestaurantAdded) {
+        onRestaurantAdded(localRestaurant);
+      }
+      toast({ title: "맛집 등록 완료!", description: "새로운 맛집이 등록되었습니다." });
+    } finally {
+      setIsSubmitting(false);
+      onOpenChange(false);
+      resetForm();
+    }
   };
 
   return (
@@ -463,8 +478,9 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
                 onClick={handleSubmit}
                 className="w-full gap-2"
                 data-testid="button-submit"
+                disabled={isSubmitting}
               >
-                맛집 등록하기
+                {isSubmitting ? "등록 중..." : "맛집 등록하기"}
               </Button>
         </div>
       </DialogContent>

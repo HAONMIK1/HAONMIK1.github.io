@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+
 interface KakaoCallbackPageProps {
   onNavigate?: (page: string) => void;
 }
@@ -37,7 +39,7 @@ export default function KakaoCallbackPage({ onNavigate }: KakaoCallbackPageProps
         throw new Error("인가 코드가 없습니다.");
       }
 
-      const response = await fetch("http://localhost:8080/api/v1/users/login", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

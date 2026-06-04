@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, MapPin, Star, ExternalLink, MessageSquare, Heart } from "lucide-react";
 import TopHeader from "@/components/TopHeader";
 import BottomNavigation from "@/components/BottomNavigation";
@@ -8,6 +9,13 @@ import { useSavedRestaurants } from "@/hooks/useSavedRestaurants";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+
+function getAuthHeaders(): Record<string, string> {
+  const token = typeof localStorage !== "undefined" ? localStorage.getItem("token") : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLocation } from "wouter";
@@ -23,74 +31,48 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId, reviewI
   const [networkFilter, setNetworkFilter] = useState<"all" | "1st" | "2nd" | "3rd">("all");
   const [showInviteDialog, setShowInviteDialog] = useState(false);
 
-  const mockRestaurant = {
+  const fallbackRestaurant = {
     id: restaurantId || "1",
     name: "우동진 역삼점",
     category: "일식",
     address: "서울특별시 강남구 역삼동 123-45",
     roadAddress: "서울특별시 강남구 테헤란로 123",
-    latitude: 37.4979,
-    longitude: 127.0276,
     placeUrl: "https://map.kakao.com/link/map/12345",
     ratingAverage: 4.0,
-    description: "신선한 재료로 만드는 정통 일식 우동 전문점입니다. 가라아게와 함께 즐기시면 더욱 맛있습니다.",
+    description: "신선한 재료로 만드는 정통 일식 우동 전문점입니다.",
   };
 
-  const mockReviews = [
-    {
-      id: "review1",
-      userId: "u1",
-      nickname: "맛집탐방가",
-      distance: 1,
-      rating: 5,
-      recommendMenu: "가리아게 우동",
-      hashTag: "영수증",
-      content: "우동이 정말 찐지고 국물이 진하네요. 특히 가리아게가 바삭바삭해요!",
-      photoUrl: "https://images.unsplash.com/photo-1618841557871-b4664fbf0cb3?w=800&auto=format&fit=crop&q=80",
-      createdAt: "2024-11-10T10:00:00Z",
-    },
-    {
-      id: "review2",
-      userId: "u2",
-      nickname: "점쩝박사",
-      distance: 1,
-      rating: 4,
-      recommendMenu: "카레우동",
-      hashTag: "안주",
-      content: "카레우동이 진짜 맛있어요! 양도 푸짐하고 가성비 최고입니다.",
-      photoUrl: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800&auto=format&fit=crop&q=80",
-      createdAt: "2024-11-10T09:30:00Z",
-    },
-    {
-      id: "review3",
-      userId: "u3",
-      nickname: "한식러버",
-      distance: 2,
-      rating: 5,
-      recommendMenu: "치즈우동",
-      content: "치즈우동이 정말 맛있어요! 부드러운 우동과 치즈의 조합이 환상적입니다.",
-      photoUrl: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=800&auto=format&fit=crop&q=80",
-      createdAt: "2024-11-09T18:00:00Z",
-    },
-    {
-      id: "review4",
-      userId: "u4",
-      nickname: "일식매니아",
-      distance: 3,
-      rating: 4,
-      recommendMenu: "새우튀김 우동",
-      content: "새우튀김이 바삭하고 크기도 커서 좋았어요. 다만 점심시간에는 사람이 많아서 대기가 조금 있습니다.",
-      createdAt: "2024-11-08T12:00:00Z",
-    },
+  const fallbackReviews = [
+    { id: "review1", userId: "u1", nickname: "맛집탐방가", distance: 1, rating: 5, recommendMenu: "가리아게 우동", hashTag: "영수증", content: "우동이 정말 찐지고 국물이 진하네요. 특히 가리아게가 바삭바삭해요!", photoUrl: "https://images.unsplash.com/photo-1618841557871-b4664fbf0cb3?w=800&auto=format&fit=crop&q=80", createdAt: "2024-11-10T10:00:00Z" },
+    { id: "review2", userId: "u2", nickname: "점쩝박사", distance: 1, rating: 4, recommendMenu: "카레우동", hashTag: "안주", content: "카레우동이 진짜 맛있어요! 양도 푸짐하고 가성비 최고입니다.", photoUrl: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=800&auto=format&fit=crop&q=80", createdAt: "2024-11-10T09:30:00Z" },
+    { id: "review3", userId: "u3", nickname: "한식러버", distance: 2, rating: 5, recommendMenu: "치즈우동", content: "치즈우동이 정말 맛있어요! 부드러운 우동과 치즈의 조합이 환상적입니다.", photoUrl: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=800&auto=format&fit=crop&q=80", createdAt: "2024-11-09T18:00:00Z" },
+    { id: "review4", userId: "u4", nickname: "일식매니아", distance: 3, rating: 4, recommendMenu: "새우튀김 우동", content: "새우튀김이 바삭하고 크기도 커서 좋았어요.", createdAt: "2024-11-08T12:00:00Z" },
   ];
 
+  // 식당 상세 API
+  const { data: restaurantData } = useQuery({
+    queryKey: ["restaurant", restaurantId],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/v1/restaurants/${restaurantId}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("식당 정보 조회 실패");
+      return response.json();
+    },
+    enabled: !!restaurantId,
+    retry: false,
+  });
+
+  const mockRestaurant = restaurantData ?? fallbackRestaurant;
+  const allReviews = restaurantData?.reviews ?? fallbackReviews;
+
   // 하이라이트할 리뷰 찾기
-  const highlightedReview = reviewId ? mockReviews.find((r) => r.id === reviewId) : null;
-  
+  const highlightedReview = reviewId ? allReviews.find((r: any) => r.id === reviewId) : null;
+
   // 나머지 리뷰 (하이라이트된 리뷰 제외)
-  const otherReviews = reviewId 
-    ? mockReviews.filter((r) => r.id !== reviewId)
-    : mockReviews;
+  const otherReviews = reviewId
+    ? allReviews.filter((r: any) => r.id !== reviewId)
+    : allReviews;
 
   const filteredReviews = otherReviews.filter((review) => {
     if (networkFilter === "all") return true;

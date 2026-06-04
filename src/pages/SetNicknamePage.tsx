@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 import { NakNakLogo } from "@/components/NakNakLogo";
 import { useToast } from "@/hooks/use-toast";
 
@@ -54,7 +56,7 @@ export default function SetNicknamePage({ onNavigate }: SetNicknamePageProps) {
       }
 
       // 회원가입 API 호출
-      const response = await fetch("http://localhost:8080/api/v1/users/signup", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

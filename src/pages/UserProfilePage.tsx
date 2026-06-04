@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 import TopHeader from "@/components/TopHeader";
 import BottomNavigation from "@/components/BottomNavigation";
 import InviteFriendDialog from "@/components/InviteFriendDialog";
@@ -64,7 +66,7 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
   const { data: userInfo, isLoading: isLoadingUser, error: userError } = useQuery<UserInfo>({
     queryKey: ["user", "me"],
     queryFn: async () => {
-      const response = await fetch("http://localhost:8080/api/v1/users/me", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
         method: "GET",
         headers: getAuthHeaders(),
       });
@@ -80,7 +82,7 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
   // 프로필 수정 mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { nickname: string }) => {
-      const response = await fetch("http://localhost:8080/api/v1/users/me", {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
         method: "PUT",
         headers: getAuthHeaders(),
         body: JSON.stringify(data),
@@ -138,14 +140,10 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
     },
   };
 
-  const mockReviews = [
+  const fallbackReviews = [
     {
       id: "review1",
-      restaurant: {
-        id: "rest1",
-        name: "우동신 역삼점",
-        imageUrl: kbbqImage,
-      },
+      restaurant: { id: "rest1", name: "우동신 역삼점", imageUrl: kbbqImage },
       rating: 5,
       date: "2024-11-06",
       recommendedMenu: "가라아게 우동",
@@ -155,11 +153,7 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
     },
     {
       id: "review2",
-      restaurant: {
-        id: "rest2",
-        name: "성수돈까스",
-        imageUrl: bibimbapImage,
-      },
+      restaurant: { id: "rest2", name: "성수돈까스", imageUrl: bibimbapImage },
       rating: 4,
       date: "2024-11-05",
       recommendedMenu: "등심 돈까스",
@@ -169,75 +163,35 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
     },
   ];
 
-  // 실제 레스토랑 데이터 (DiscoveryFeed와 동일한 데이터)
-  const allMockRestaurants = [
-    {
-      id: "1-0",
-      name: "우동진 역삼점 1호점",
-      category: "일식",
-      imageUrl: "https://images.unsplash.com/photo-1618841557871-b4664fbf0cb3?w=800&auto=format&fit=crop&q=80",
-      rating: 4.0,
-      address: "서울특별시 강남구 역삼동 123-45",
-      reviewCount: 2,
+  // 내 후기 목록 API
+  const { data: myReviewsData } = useQuery({
+    queryKey: ["user", "me", "reviews"],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/v1/users/me/reviews`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("후기 목록 조회 실패");
+      return response.json();
     },
-    {
-      id: "1-1",
-      name: "우동진 역삼점 2호점",
-      category: "일식",
-      imageUrl: "https://images.unsplash.com/photo-1618841557871-b4664fbf0cb3?w=800&auto=format&fit=crop&q=80",
-      rating: 4.0,
-      address: "서울특별시 강남구 역삼동 123-45",
-      reviewCount: 2,
+    retry: false,
+  });
+
+  const myReviews = myReviewsData ?? fallbackReviews;
+
+  // 저장한 레스토랑 API
+  const { data: savedRestaurantsData } = useQuery({
+    queryKey: ["restaurants", "saved"],
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/api/v1/restaurants/saved`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("저장 목록 조회 실패");
+      return response.json();
     },
-    {
-      id: "2-0",
-      name: "성수돈까스 1호점",
-      category: "일식",
-      imageUrl: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=800&auto=format&fit=crop&q=80",
-      rating: 4.5,
-      address: "서울특별시 성수구 성수동 67-89",
-      reviewCount: 2,
-    },
-    {
-      id: "3-0",
-      name: "홍대 떡볶이 1호점",
-      category: "한식",
-      imageUrl: "https://images.unsplash.com/photo-1525755662778-989d0524087e?w=800&auto=format&fit=crop&q=80",
-      rating: 4.3,
-      address: "서울특별시 마포구 서교동",
-      reviewCount: 2,
-    },
-    {
-      id: "4-0",
-      name: "강남 한정식 1호점",
-      category: "한식",
-      imageUrl: "https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=800&auto=format&fit=crop&q=80",
-      rating: 4.8,
-      address: "서울특별시 강남구 역삼동",
-      reviewCount: 2,
-    },
-    {
-      id: "5-0",
-      name: "마포 해물찜 1호점",
-      category: "한식",
-      imageUrl: "https://images.unsplash.com/photo-1559847844-5315695dadae?w=800&auto=format&fit=crop&q=80",
-      rating: 4.6,
-      address: "서울특별시 마포구 서교동",
-      reviewCount: 2,
-    },
-    {
-      id: "6-0",
-      name: "감성 카페 1호점",
-      category: "카페",
-      imageUrl: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=800&auto=format&fit=crop&q=80",
-      rating: 4.7,
-      address: "서울특별시 강남구 신사동",
-      reviewCount: 1,
-    },
-  ];
-  
-  // 저장된 레스토랑만 필터링
-  const mockSavedRestaurants = allMockRestaurants.filter(r => savedRestaurantIds.includes(r.id));
+    retry: false,
+  });
+
+  const mockSavedRestaurants = savedRestaurantsData ?? [];
 
   if (isLoadingUser) {
     return (
@@ -348,7 +302,7 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
             </TabsList>
 
             <TabsContent value="reviews" className="mt-4 space-y-3">
-              {mockReviews.map((review) => (
+              {myReviews.map((review) => (
                 <Card
                   key={review.id}
                   className="hover-elevate cursor-pointer border-primary"

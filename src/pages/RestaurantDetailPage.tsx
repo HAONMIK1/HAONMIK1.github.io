@@ -161,7 +161,7 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId, reviewI
                       <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                       <span className="font-semibold text-sm">{mockRestaurant.ratingAverage.toFixed(1)}</span>
                     </div>
-                    <span className="text-sm text-muted-foreground">({mockReviews.length}개 후기)</span>
+                    <span className="text-sm text-muted-foreground">({allReviews.length}개 후기)</span>
                   </div>
                 </div>
                 <Button

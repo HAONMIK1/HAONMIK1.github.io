@@ -120,7 +120,7 @@ export default function RankingsPage({ onNavigate }: RankingsPageProps = {}) {
                 key={ranking.rank}
                 className="p-4 hover-elevate cursor-pointer"
                 data-testid={`weekly-rank-${ranking.rank}`}
-                onClick={() => {}}
+                onClick={() => ranking.user?.id && setLocation(`/profile/${ranking.user.id}`)}
               >
                 <div className="flex items-center gap-4">
                   <div className="flex-shrink-0 w-12 text-center">
@@ -151,7 +151,7 @@ export default function RankingsPage({ onNavigate }: RankingsPageProps = {}) {
                 key={ranking.rank}
                 className="p-4 hover-elevate cursor-pointer"
                 data-testid={`monthly-rank-${ranking.rank}`}
-                onClick={() => {}}
+                onClick={() => ranking.user?.id && setLocation(`/profile/${ranking.user.id}`)}
               >
                 <div className="flex items-center gap-4">
                   <div className="flex-shrink-0 w-12 text-center">

@@ -36,6 +36,9 @@ export default function OnboardingLicense() {
   ];
 
   const handleStart = () => {
+    if (selectedLicense) {
+      localStorage.setItem("targetLicense", selectedLicense);
+    }
     setLocation("/");
   };
 

@@ -34,6 +34,8 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
   const [rating, setRating] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [hasPhotos, setHasPhotos] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -117,6 +119,12 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
     setSearchResults([]);
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setSelectedFiles(files);
+    setHasPhotos(files.length > 0);
+  };
+
   const handleBackToSearch = () => {
     setFormData({
       name: "",
@@ -134,6 +142,7 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
     setRating(0);
     setSelectedCategory("");
     setHasPhotos(false);
+    setSelectedFiles([]);
     setSearchQuery("");
     setSearchResults([]);
     setSearchMode("search");
@@ -408,15 +417,29 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
               {/* 사진 업로드 */}
               <div className="space-y-2">
                 <Label>사진 업로드</Label>
-                <div 
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileChange}
+                  className="hidden"
+                  data-testid="input-file-upload"
+                />
+                <div
                   className="border-2 border-dashed border-border rounded-lg p-8 text-center hover-elevate cursor-pointer"
-                  onClick={() => setHasPhotos(true)}
+                  onClick={() => fileInputRef.current?.click()}
                   data-testid="upload-area"
                 >
                   <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    {hasPhotos ? "사진 선택됨 ✓" : "클릭하여 사진 업로드"}
-                  </p>
+                  {selectedFiles.length > 0 ? (
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{selectedFiles.length}장 선택됨 ✓</p>
+                      <p className="text-xs text-muted-foreground mt-1">{selectedFiles.map(f => f.name).join(", ")}</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">클릭하여 사진 업로드 (+500P)</p>
+                  )}
                 </div>
               </div>
 

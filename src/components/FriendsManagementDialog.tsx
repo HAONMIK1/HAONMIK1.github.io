@@ -14,7 +14,12 @@ import { useLocation } from "wouter";
 import InviteFriendDialog from "./InviteFriendDialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { User } from "@shared/schema";
+
+interface User {
+  id: string;
+  username?: string;
+  nickname?: string;
+}
 
 interface FriendsManagementDialogProps {
   open: boolean;

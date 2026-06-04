@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -10,6 +11,7 @@ interface KakaoCallbackPageProps {
 
 export default function KakaoCallbackPage({ onNavigate }: KakaoCallbackPageProps) {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   
   // URL에서 code, state 파라미터 추출
   const urlParams = new URLSearchParams(window.location.search);
@@ -78,7 +80,7 @@ export default function KakaoCallbackPage({ onNavigate }: KakaoCallbackPageProps
   useEffect(() => {
     // 카카오 인증 에러 처리
     if (error) {
-      alert(`카카오 로그인 실패: ${errorDescription || error}`);
+      toast({ title: "카카오 로그인 실패", description: errorDescription || error, variant: "destructive" });
       setLocation("/login");
       return;
     }
@@ -119,7 +121,7 @@ export default function KakaoCallbackPage({ onNavigate }: KakaoCallbackPageProps
 
     // 로그인 에러 처리
     if (loginError) {
-      alert(`로그인 실패: ${loginError.message}`);
+      toast({ title: "로그인 실패", description: loginError.message, variant: "destructive" });
       setLocation("/login");
       return;
     }

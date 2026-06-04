@@ -120,9 +120,12 @@ function Router() {
         <Route path="/review/:id">
           {(params) => (
             <ProtectedRoute>
-              <RestaurantDetailPage onNavigate={handleNavigation} restaurantId="1" reviewId={params.id} />
+              <RestaurantDetailPage onNavigate={handleNavigation} restaurantId={params.id?.split("-")[0] ?? "1"} reviewId={params.id} />
             </ProtectedRoute>
           )}
+        </Route>
+        <Route path="/invite/:code">
+          {(params) => <LoginPage onNavigate={handleNavigation} inviteCode={params.code} />}
         </Route>
         <Route path="/onboarding">
           {() => (

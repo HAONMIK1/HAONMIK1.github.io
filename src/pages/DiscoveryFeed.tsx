@@ -5,10 +5,12 @@ import BottomNavigation from "@/components/BottomNavigation";
 import InviteFriendDialog from "@/components/InviteFriendDialog";
 import FriendsManagementDialog from "@/components/FriendsManagementDialog";
 import RestaurantWithReviews from "@/components/RestaurantWithReviews";
+import RestaurantMapView, { MapPlace } from "@/components/RestaurantMapView";
+import { FALLBACK_PLACES } from "@/pages/MapPage";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
-import { Loader2 } from "lucide-react";
+import { Loader2, List, Map } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -27,6 +29,7 @@ interface DiscoveryFeedProps {
 export default function DiscoveryFeed({ onNavigate, newRestaurants = [] }: DiscoveryFeedProps = {}) {
   const [, setLocation] = useLocation();
   const [networkFilters, setNetworkFilters] = useState<NetworkFilter[]>(["1st", "2nd", "3rd"]);
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [showFriendsDialog, setShowFriendsDialog] = useState(false);
   const [displayedCount, setDisplayedCount] = useState(10);
@@ -179,6 +182,26 @@ export default function DiscoveryFeed({ onNavigate, newRestaurants = [] }: Disco
   const displayedRestaurants = filteredRestaurants.slice(0, displayedCount);
   const hasMore = displayedCount < filteredRestaurants.length;
 
+  // 지도 모드용 좌표 매핑 (피드에 좌표 없으면 mock 좌표로 보완)
+  const mapPlaces: MapPlace[] = filteredRestaurants
+    .map((r: any) => {
+      const fb = FALLBACK_PLACES.find((f) => f.restaurantId === r.restaurantId);
+      const lat = r.latitude ?? fb?.lat;
+      const lng = r.longitude ?? fb?.lng;
+      if (typeof lat !== "number" || typeof lng !== "number") return null;
+      return {
+        restaurantId: r.restaurantId,
+        name: r.name,
+        category: r.category,
+        ratingAverage: r.ratingAverage,
+        address: r.roadAddress || r.address,
+        lat,
+        lng,
+        naverPlaceUrl: r.naverPlaceUrl ?? fb?.naverPlaceUrl,
+      } as MapPlace;
+    })
+    .filter(Boolean) as MapPlace[];
+
   // 무한 스크롤 구현
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -220,6 +243,32 @@ export default function DiscoveryFeed({ onNavigate, newRestaurants = [] }: Disco
       />
 
       <div className="max-w-7xl mx-auto p-4 space-y-6">
+        {/* 리스트 / 지도 보기 전환 */}
+        <div className="flex justify-center">
+          <div className="inline-flex rounded-full bg-muted p-1" data-testid="view-toggle">
+            <button
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "flex items-center gap-1.5 px-5 py-1.5 rounded-full text-sm font-semibold transition-all",
+                viewMode === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              )}
+              data-testid="view-list"
+            >
+              <List className="w-4 h-4" /> 리스트
+            </button>
+            <button
+              onClick={() => setViewMode("map")}
+              className={cn(
+                "flex items-center gap-1.5 px-5 py-1.5 rounded-full text-sm font-semibold transition-all",
+                viewMode === "map" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              )}
+              data-testid="view-map"
+            >
+              <Map className="w-4 h-4" /> 지도
+            </button>
+          </div>
+        </div>
+
         {/* 네트워크 필터 */}
         <section>
           <div className="flex items-center justify-between mb-3">
@@ -288,7 +337,15 @@ export default function DiscoveryFeed({ onNavigate, newRestaurants = [] }: Disco
             {networkFilters.length === 0 && "맛집 없음"}
           </h2>
 
-          {isFeedLoading ? (
+          {viewMode === "map" ? (
+            mapPlaces.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p>해당 네트워크에 표시할 맛집이 없습니다.</p>
+              </div>
+            ) : (
+              <RestaurantMapView places={mapPlaces} heightClass="h-[60vh]" />
+            )
+          ) : isFeedLoading ? (
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
             </div>

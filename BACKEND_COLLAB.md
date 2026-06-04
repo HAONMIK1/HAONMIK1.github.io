@@ -486,3 +486,91 @@ interface PointTransaction {
 - 모든 날짜/시간은 서버 기준 UTC로 반환하고, 프론트에서 로컬 시간으로 변환합니다.
 - 이미지 URL은 CDN 또는 S3 퍼블릭 URL로 반환하면 됩니다.
 - 포인트 지급 로직은 서버에서 처리하며, 프론트는 API 호출 후 결과만 표시합니다.
+
+---
+
+# 부록. 프론트 신규 화면 관련 백엔드 제안 (협의 필요)
+
+> 아래는 프론트에서 먼저 화면을 만든 기능들의 백엔드 계약 제안입니다.
+> 현재는 mock 폴백으로 동작하며, 백엔드 구현 시 이 계약에 맞추면 바로 연동됩니다.
+
+## A. [1순위] 회원가입 시 초대자↔가입자 자동 팔로우
+
+`docs/auth.md`의 회원가입 시퀀스는 `invite_code.used_by`만 기록하고 **초대자와
+가입자 사이의 follow(1촌) 엣지를 생성하지 않습니다.** 이 단계가 없으면 가입 직후
+3촌 BFS 피드가 비어 첫 경험이 공허해집니다.
+
+```
+회원가입 트랜잭션에 추가:
+  INSERT INTO follows (follower_id = 신규유저, following_id = 초대자)
+  // 정책에 따라 양방향(초대자→신규유저)도 함께 생성 가능
+```
+→ 가입 즉시 초대자 및 그 2·3촌의 맛집이 피드에 노출됨. **콜드스타트 해결의 핵심.**
+
+선택: `GET /api/v1/users/me` 응답에 `inviterNickname` 포함 시 온보딩 화면에
+"OOO님의 초대로 시작했어요"를 노출할 수 있음(없으면 일반 문구로 폴백).
+
+## B. 네이버 기반 맛집 검색 프록시 (맛집 등록 간소화)
+
+맛집 등록 화면에서 네이버로 검색 → 선택 시 **네이버 플레이스 상세 URL + 좌표**까지
+저장한다. 그러면 지도 핀 표시 + 네이버 상세 딥링크가 가능.
+
+```
+GET /api/v1/naver/search?query={검색어}
+헤더: Authorization: Bearer {accessToken}
+
+서버 처리:
+  1) 네이버 지역검색 API로 좌표/주소/카테고리 확보
+  2) 네이버 플레이스 상세 URL(m.place.naver.com/restaurant/{id})은 검색결과 크롤링으로 확보
+  3) 좌표는 WGS84로 정규화 (네이버 TM128 mapx/mapy 변환은 서버 책임)
+
+응답(ApiResponse data):
+[
+  {
+    "name": "가게명",
+    "category": "한식",
+    "roadAddress": "서울 강남구 ...",
+    "address": "서울 강남구 ...",
+    "latitude": 37.4998,
+    "longitude": 127.0365,
+    "naverPlaceId": "12345678",
+    "naverPlaceUrl": "https://m.place.naver.com/restaurant/12345678/home"
+  }
+]
+```
+⚠️ 크롤링은 네이버 ToS/구조 변경에 취약 → 결과 캐싱·실패 시 graceful 처리 권고.
+
+### 맛집(리뷰) 등록 payload 확장
+`restaurants` 테이블에 컬럼 추가: `naver_place_url, naver_place_id, latitude, longitude`.
+등록 API body에 아래 필드를 포함해 upsert:
+```
+{ ..., "naverPlaceUrl": "...", "naverPlaceId": "...", "latitude": 37.5, "longitude": 127.0 }
+```
+→ `GET /api/v1/restaurants/feed` 응답의 각 맛집에도 `latitude, longitude, naverPlaceUrl` 포함 필요(지도 핀·딥링크용).
+
+## C. 식당 저장(북마크) — 기획서 향후확장
+```
+GET    /api/v1/restaurants/saved          // 저장 목록 (Restaurant 배열)
+POST   /api/v1/restaurants/{id}/save      // 저장
+DELETE /api/v1/restaurants/{id}/save      // 저장 취소
+```
+현재는 localStorage로 동작. 백엔드 구현 시 서버 동기화로 전환.
+
+## D. 알림 센터 — 기획서 향후확장(푸시 알림)
+```
+GET  /api/v1/notifications?page=0         // 알림 목록
+POST /api/v1/notifications/{id}/read      // 단건 읽음
+POST /api/v1/notifications/read-all       // 전체 읽음
+
+알림 타입: review(친구 새 맛집) | follow(새 팔로워) | point(적립) | ranking(순위변동)
+응답 항목: { id, type, title, body, timestamp, read, link }
+```
+
+## E. 친구 검색/팔로우 (온보딩·친구관리에서 사용 — 백엔드 설계와 일치)
+```
+GET    /api/v1/users/search?keyword=
+POST   /api/v1/follows { targetUserId }
+DELETE /api/v1/follows/{followingId}
+```
+> 참고: 현재 일부 구화면은 `/api/users/...` 경로를 쓰고 있어, 백엔드 정식 경로
+> `/api/v1/follows`, `/api/v1/users/search` 로 추후 정합성 작업 필요.

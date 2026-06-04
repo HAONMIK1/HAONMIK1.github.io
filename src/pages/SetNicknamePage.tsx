@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ interface SetNicknamePageProps {
 }
 
 export default function SetNicknamePage({ onNavigate }: SetNicknamePageProps) {
+  const [, setLocation] = useLocation();
   const [nickname, setNickname] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -96,8 +98,8 @@ export default function SetNicknamePage({ onNavigate }: SetNicknamePageProps) {
         description: `${trimmedNickname}님, 낙낙에 오신 것을 환영합니다.`,
       });
       
-      // 메인 화면으로 이동
-      onNavigate?.("home");
+      // 가입 직후 친구 연결 온보딩으로 이동 (초대자와 1촌 연결된 상태)
+      setLocation("/onboarding/friends");
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.";
       toast({

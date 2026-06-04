@@ -353,6 +353,17 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
             </TabsContent>
 
             <TabsContent value="saved" className="mt-4 space-y-3">
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-primary h-auto p-0"
+                  onClick={() => setLocation("/saved")}
+                  data-testid="button-view-all-saved"
+                >
+                  전체 보기 →
+                </Button>
+              </div>
               {mockSavedRestaurants.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <Heart className="w-12 h-12 mx-auto mb-3 opacity-50" />

@@ -38,6 +38,7 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId, reviewI
     address: "서울특별시 강남구 역삼동 123-45",
     roadAddress: "서울특별시 강남구 테헤란로 123",
     placeUrl: "https://map.kakao.com/link/map/12345",
+    naverPlaceUrl: "https://m.place.naver.com/restaurant/12345678/home",
     ratingAverage: 4.0,
     description: "신선한 재료로 만드는 정통 일식 우동 전문점입니다.",
   };
@@ -189,16 +190,17 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId, reviewI
                 </div>
               </div>
 
-              {/* 카카오맵 버튼 */}
+              {/* 네이버 플레이스 버튼 */}
               <div className="flex gap-2">
                 <Button
                   variant="default"
                   className="gap-2"
-                  onClick={() => window.open(mockRestaurant.placeUrl, "_blank")}
-                  data-testid="button-kakao-map"
+                  style={{ backgroundColor: "#03C75A" }}
+                  onClick={() => window.open(mockRestaurant.naverPlaceUrl || mockRestaurant.placeUrl, "_blank")}
+                  data-testid="button-naver-place"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  카카오맵에서 보기
+                  네이버에서 보기
                 </Button>
               </div>
             </CardContent>

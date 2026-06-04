@@ -17,6 +17,33 @@ import { MapPin, Upload, DollarSign, Clock, Coins, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+
+function getAuthHeaders(): Record<string, string> {
+  const token = typeof localStorage !== "undefined" ? localStorage.getItem("accessToken") : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// 네이버 검색 mock (백엔드 미연동 시 데모용)
+function naverMockResults(query: string) {
+  const q = query.trim();
+  const base = [
+    { suffix: "본점", category: "한식", lat: 37.4998, lng: 127.0365, road: "서울 강남구 테헤란로 152" },
+    { suffix: "역삼점", category: "일식", lat: 37.5006, lng: 127.0366, road: "서울 강남구 테헤란로 123" },
+    { suffix: "강남점", category: "카페", lat: 37.4979, lng: 127.0276, road: "서울 강남구 강남대로 396" },
+  ];
+  return base.map((b, i) => ({
+    name: `${q} ${b.suffix}`,
+    category: b.category,
+    roadAddress: b.road,
+    address: b.road,
+    latitude: b.lat,
+    longitude: b.lng,
+    naverPlaceId: `${10000000 + i}`,
+    naverPlaceUrl: `https://m.place.naver.com/restaurant/${10000000 + i}/home`,
+  }));
+}
+
 declare global {
   interface Window {
     kakao: any;
@@ -46,75 +73,60 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
   const [searchMode, setSearchMode] = useState<"search" | "manual">("search");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<{
+    naverPlaceUrl?: string;
+    naverPlaceId?: string;
+    latitude?: number;
+    longitude?: number;
+  }>({});
 
   const categories = ["한식", "일식", "중식", "양식", "분식", "치킨", "카페", "기타"];
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
-    
+
     try {
-      // 서버 프록시를 통해 카카오 API 호출
+      // 서버 프록시를 통해 네이버 검색 (좌표/주소/카테고리 + 네이버 플레이스 URL)
       const response = await fetch(
-        `/api/kakao/search?query=${encodeURIComponent(searchQuery)}`
+        `${API_BASE_URL}/api/v1/naver/search?query=${encodeURIComponent(searchQuery)}`,
+        { headers: getAuthHeaders() }
       );
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        toast({
-          title: "검색 실패",
-          description: errorData?.error || "음식점 검색 중 오류가 발생했습니다.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      const data = await response.json();
-      
-      if (data.documents && data.documents.length > 0) {
-        setSearchResults(data.documents);
+      if (!response.ok) throw new Error("검색 실패");
+
+      const body = await response.json();
+      const list: any[] = body.data ?? body.documents ?? body ?? [];
+      if (list.length > 0) {
+        setSearchResults(list);
       } else {
         setSearchResults([]);
-        toast({
-          title: "검색 결과가 없습니다",
-          description: "다른 키워드로 검색해보세요.",
-        });
+        toast({ title: "검색 결과가 없습니다", description: "다른 키워드로 검색해보세요." });
       }
     } catch (error) {
-      toast({
-        title: "검색 실패",
-        description: "음식점 검색 중 오류가 발생했습니다.",
-        variant: "destructive",
-      });
+      // 백엔드 미연동 시 mock 결과로 데모
+      setSearchResults(naverMockResults(searchQuery));
     }
   };
 
   const handleSelectPlace = (place: any) => {
     setFormData({
-      name: place.place_name,
-      address: place.road_address_name || place.address_name,
+      name: place.name,
+      address: place.roadAddress || place.address || "",
       recommendedMenu: "",
       review: "",
       hashtag: "",
     });
-    
-    const categoryMap: Record<string, string> = {
-      "한식": "한식",
-      "일식": "일식",
-      "중식": "중식",
-      "양식": "양식",
-      "분식": "분식",
-      "치킨": "치킨",
-      "카페": "카페",
-    };
-    
-    const detectedCategory = Object.keys(categoryMap).find((key) =>
-      place.category_name.includes(key)
-    );
-    
-    if (detectedCategory) {
-      setSelectedCategory(categoryMap[detectedCategory]);
-    }
-    
+
+    setSelectedPlace({
+      naverPlaceUrl: place.naverPlaceUrl,
+      naverPlaceId: place.naverPlaceId,
+      latitude: place.latitude,
+      longitude: place.longitude,
+    });
+
+    const categories = ["한식", "일식", "중식", "양식", "분식", "치킨", "카페"];
+    const detected = categories.find((c) => (place.category || "").includes(c));
+    if (detected) setSelectedCategory(detected);
+
     // 검색 결과만 초기화 (검색어는 유지)
     setSearchResults([]);
   };
@@ -134,6 +146,7 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
       hashtag: "",
     });
     setSelectedCategory("");
+    setSelectedPlace({});
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -146,6 +159,7 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
     setSearchQuery("");
     setSearchResults([]);
     setSearchMode("search");
+    setSelectedPlace({});
     setFormData({ name: "", address: "", recommendedMenu: "", review: "", hashtag: "" });
   };
 
@@ -167,6 +181,10 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
       recommendMenu: formData.recommendedMenu,
       review: formData.review,
       hashtag: formData.hashtag,
+      naverPlaceUrl: selectedPlace.naverPlaceUrl,
+      naverPlaceId: selectedPlace.naverPlaceId,
+      latitude: selectedPlace.latitude,
+      longitude: selectedPlace.longitude,
     };
 
     setIsSubmitting(true);
@@ -247,7 +265,7 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
                   data-testid="button-search-mode"
                 >
                   <Search className="w-4 h-4 mr-2" />
-                  카카오맵 검색
+                  네이버 검색
                 </Button>
                 <Button
                   type="button"
@@ -261,7 +279,7 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
                 </Button>
               </div>
 
-              {/* 카카오맵 검색 */}
+              {/* 네이버 검색 */}
               {searchMode === "search" && !formData.name && (
                 <div className="space-y-3">
                   <Label htmlFor="search">맛집 검색</Label>
@@ -286,44 +304,36 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
                   {/* 검색 결과 */}
                   {searchResults.length > 0 && (
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground">검색 결과 {searchResults.length}개</p>
-                        <a
-                          href={`https://map.kakao.com/link/search/${encodeURIComponent(searchQuery)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-primary hover:underline"
-                        >
-                          카카오맵에서 보기
-                        </a>
-                      </div>
-                      
+                      <p className="text-sm text-muted-foreground">검색 결과 {searchResults.length}개</p>
+
                       {/* 검색 결과 리스트 */}
                       <div className="border rounded-lg divide-y max-h-80 overflow-y-auto">
-                        {searchResults.map((place) => (
+                        {searchResults.map((place, idx) => (
                           <div
-                            key={place.id}
+                            key={place.naverPlaceId ?? idx}
                             className="p-3 hover-elevate cursor-pointer"
                             onClick={() => handleSelectPlace(place)}
-                            data-testid={`search-result-${place.id}`}
+                            data-testid={`search-result-${place.naverPlaceId ?? idx}`}
                           >
                             <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1">
-                                <p className="font-semibold text-sm">{place.place_name}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">{place.category_name}</p>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-sm">{place.name}</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">{place.category}</p>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  {place.road_address_name || place.address_name}
+                                  {place.roadAddress || place.address}
                                 </p>
                               </div>
-                              <a
-                                href={place.place_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="shrink-0 text-xs text-primary hover:underline"
-                              >
-                                지도
-                              </a>
+                              {place.naverPlaceUrl && (
+                                <a
+                                  href={place.naverPlaceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="shrink-0 text-xs text-[#03C75A] font-medium hover:underline"
+                                >
+                                  네이버 상세
+                                </a>
+                              )}
                             </div>
                           </div>
                         ))}

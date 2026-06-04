@@ -16,6 +16,10 @@ import LoginPage from "@/pages/LoginPage";
 import SetNicknamePage from "@/pages/SetNicknamePage";
 import RestaurantDetailPage from "@/pages/RestaurantDetailPage";
 import SearchPage from "@/pages/SearchPage";
+import OnboardingFriends from "@/pages/OnboardingFriends";
+import MapPage from "@/pages/MapPage";
+import SavedRestaurantsPage from "@/pages/SavedRestaurantsPage";
+import NotificationsPage from "@/pages/NotificationsPage";
 
 // 보호된 라우트 컴포넌트
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -67,8 +71,17 @@ function Router() {
       case "add":
         setShowAddDialog(true);
         break;
+      case "map":
+        setLocation("/map");
+        break;
       case "search":
         setLocation("/search");
+        break;
+      case "saved":
+        setLocation("/saved");
+        break;
+      case "notifications":
+        setLocation("/notifications");
         break;
       case "activity":
         setLocation("/points");
@@ -92,6 +105,9 @@ function Router() {
         <Route path="/set-nickname">
           {() => <SetNicknamePage onNavigate={handleNavigation} />}
         </Route>
+        <Route path="/onboarding/friends">
+          {() => <OnboardingFriends />}
+        </Route>
         <Route path="/">
           {() => (
             <ProtectedRoute>
@@ -103,6 +119,27 @@ function Router() {
           {() => (
             <ProtectedRoute>
               <SearchPage onNavigate={handleNavigation} />
+            </ProtectedRoute>
+          )}
+        </Route>
+        <Route path="/map">
+          {() => (
+            <ProtectedRoute>
+              <MapPage onNavigate={handleNavigation} />
+            </ProtectedRoute>
+          )}
+        </Route>
+        <Route path="/saved">
+          {() => (
+            <ProtectedRoute>
+              <SavedRestaurantsPage onNavigate={handleNavigation} />
+            </ProtectedRoute>
+          )}
+        </Route>
+        <Route path="/notifications">
+          {() => (
+            <ProtectedRoute>
+              <NotificationsPage onNavigate={handleNavigation} />
             </ProtectedRoute>
           )}
         </Route>

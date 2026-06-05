@@ -16,6 +16,7 @@ import CategoryBadge from "./CategoryBadge";
 import { MapPin, Upload, DollarSign, Clock, Coins, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import RegisterSuccessSheet from "./RegisterSuccessSheet";
 
 declare global {
   interface Window {
@@ -137,6 +138,7 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
   };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successInfo, setSuccessInfo] = useState<{ name: string; earnedXp: number } | null>(null);
 
   const resetForm = () => {
     setRating(0);
@@ -169,6 +171,7 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
       hashtag: formData.hashtag,
     };
 
+    const earnedXp = hasPhotos ? 40 : 20;
     setIsSubmitting(true);
     try {
       const res = await apiRequest("POST", "/api/v1/restaurants", payload);
@@ -177,7 +180,8 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
       if (onRestaurantAdded) {
         onRestaurantAdded(saved);
       }
-      toast({ title: "맛집 등록 완료!", description: "새로운 맛집이 등록되었습니다." });
+      setSuccessInfo({ name: payload.name, earnedXp });
+      return;
     } catch {
       // API 실패 시 로컬 상태에만 추가
       const localRestaurant = {
@@ -202,16 +206,25 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
       if (onRestaurantAdded) {
         onRestaurantAdded(localRestaurant);
       }
-      toast({ title: "맛집 등록 완료!", description: "새로운 맛집이 등록되었습니다." });
+      setSuccessInfo({ name: payload.name, earnedXp });
     } finally {
       setIsSubmitting(false);
-      onOpenChange(false);
-      resetForm();
     }
   };
 
+  const handleSuccessClose = () => {
+    setSuccessInfo(null);
+    onOpenChange(false);
+    resetForm();
+  };
+
+  const handleSuccessAddMore = () => {
+    setSuccessInfo(null);
+    resetForm();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { setSuccessInfo(null); resetForm(); } onOpenChange(v); }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-add-restaurant">
         <DialogHeader>
           <DialogTitle className="text-2xl">맛집 등록하기</DialogTitle>
@@ -220,7 +233,17 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        {successInfo ? (
+          <RegisterSuccessSheet
+            restaurantName={successInfo.name}
+            earnedXp={successInfo.earnedXp}
+            currentXp={320 + successInfo.earnedXp}
+            onClose={handleSuccessClose}
+            onAddMore={handleSuccessAddMore}
+          />
+        ) : null}
+
+        <div className="space-y-6 py-4" style={{ display: successInfo ? "none" : undefined }}>
           {/* 포인트 획득 정보 */}
           <div className={`rounded-lg p-6 ${hasPhotos ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
             <p className="text-sm opacity-90 mb-2">등록 시 획득 점수</p>

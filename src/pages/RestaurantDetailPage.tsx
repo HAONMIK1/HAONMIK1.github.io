@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, MapPin, Star, ExternalLink, MessageSquare, Heart } from "lucide-react";
+import { ArrowLeft, MapPin, Star, ExternalLink, MessageSquare, Heart, HandHeart } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import TopHeader from "@/components/TopHeader";
 import BottomNavigation from "@/components/BottomNavigation";
 import InviteFriendDialog from "@/components/InviteFriendDialog";
@@ -30,6 +31,8 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId, reviewI
   const [, setLocation] = useLocation();
   const [networkFilter, setNetworkFilter] = useState<"all" | "1st" | "2nd" | "3rd">("all");
   const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [thanksSent, setThanksSent] = useState(false);
+  const { toast } = useToast();
 
   const fallbackRestaurant = {
     id: restaurantId || "1",
@@ -189,8 +192,8 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId, reviewI
                 </div>
               </div>
 
-              {/* 카카오맵 버튼 */}
-              <div className="flex gap-2">
+              {/* 버튼 */}
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   variant="default"
                   className="gap-2"
@@ -199,6 +202,23 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId, reviewI
                 >
                   <ExternalLink className="w-4 h-4" />
                   카카오맵에서 보기
+                </Button>
+                <Button
+                  variant={thanksSent ? "default" : "outline"}
+                  className="gap-2"
+                  disabled={thanksSent}
+                  data-testid="button-thanks"
+                  onClick={() => {
+                    setThanksSent(true);
+                    fetch(`${API_BASE_URL}/api/v1/restaurants/${mockRestaurant.id}/thanks`, {
+                      method: "POST",
+                      headers: getAuthHeaders(),
+                    }).catch(() => {});
+                    toast({ title: "감사 인사를 보냈어요 🙏", description: "등록자에게 +10 XP가 지급됩니다." });
+                  }}
+                >
+                  <HandHeart className="w-4 h-4" />
+                  {thanksSent ? "감사 인사 완료" : "맛집 알려줘서 고마워요"}
                 </Button>
               </div>
             </CardContent>
@@ -227,7 +247,7 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId, reviewI
                     ))}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {mockReviews.length}개의 후기
+                    {allReviews.length}개의 후기
                   </div>
                 </div>
 

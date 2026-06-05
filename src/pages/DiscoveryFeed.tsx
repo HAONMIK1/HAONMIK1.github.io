@@ -8,7 +8,7 @@ import RestaurantWithReviews from "@/components/RestaurantWithReviews";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
-import { Loader2 } from "lucide-react";
+import { Loader2, List, Map, Target } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
@@ -32,6 +32,17 @@ export default function DiscoveryFeed({ onNavigate, newRestaurants = [] }: Disco
   const [displayedCount, setDisplayedCount] = useState(10);
   const [isScrollLoading, setIsScrollLoading] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
+
+  const weeklyMissions = [
+    { text: "이탈리안 맛집 1곳 등록하기", category: "양식", xp: 25 },
+    { text: "카페 또는 디저트 1곳 등록하기", category: "카페", xp: 25 },
+    { text: "한식 맛집 1곳 등록하기", category: "한식", xp: 25 },
+    { text: "일식 맛집 1곳 등록하기", category: "일식", xp: 25 },
+    { text: "분식 또는 치킨 1곳 등록하기", category: "분식", xp: 25 },
+  ];
+  const weekNum = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000));
+  const weeklyMission = weeklyMissions[weekNum % weeklyMissions.length];
+  const missionDaysLeft = 7 - new Date().getDay();
 
   // 피드 API 호출
   const { data: feedData, isLoading: isFeedLoading } = useQuery({
@@ -220,6 +231,50 @@ export default function DiscoveryFeed({ onNavigate, newRestaurants = [] }: Disco
       />
 
       <div className="max-w-7xl mx-auto p-4 space-y-6">
+        {/* 리스트 / 지도 보기 전환 */}
+        <div className="flex justify-center">
+          <div className="inline-flex rounded-full bg-muted p-1" data-testid="view-toggle">
+            <button
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "flex items-center gap-1.5 px-5 py-1.5 rounded-full text-sm font-semibold transition-all",
+                viewMode === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              )}
+              data-testid="view-list"
+            >
+              <List className="w-4 h-4" /> 리스트
+            </button>
+            <button
+              onClick={() => setViewMode("map")}
+              className={cn(
+                "flex items-center gap-1.5 px-5 py-1.5 rounded-full text-sm font-semibold transition-all",
+                viewMode === "map" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+              )}
+              data-testid="view-map"
+            >
+              <Map className="w-4 h-4" /> 지도
+            </button>
+          </div>
+        </div>
+
+        {/* 주간 미션 카드 */}
+        <div className="bg-gradient-to-r from-primary/5 to-violet-500/5 border border-primary/20 rounded-2xl p-4" data-testid="weekly-mission">
+          <div className="flex items-start justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-primary" />
+              <span className="text-xs font-semibold text-primary">이번 주 미션</span>
+            </div>
+            <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">D-{missionDaysLeft}</span>
+          </div>
+          <p className="text-sm font-semibold text-foreground mb-2">{weeklyMission.text}</p>
+          <div className="flex items-center justify-between">
+            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden mr-3">
+              <div className="h-full bg-primary rounded-full w-0" />
+            </div>
+            <span className="text-xs font-medium text-primary shrink-0">완료 시 +{weeklyMission.xp} XP</span>
+          </div>
+        </div>
+
         {/* 네트워크 필터 */}
         <section>
           <div className="flex items-center justify-between mb-3">

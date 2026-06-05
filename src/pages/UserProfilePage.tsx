@@ -13,9 +13,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSavedRestaurants } from "@/hooks/useSavedRestaurants";
 import { useToast } from "@/hooks/use-toast";
-import { 
+import {
   Settings, MapPin, Star, Heart, UserPlus, TrendingUp
 } from "lucide-react";
+import { getUserLevel, getLevelProgress } from "@/lib/levels";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -239,7 +240,35 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
                     </Avatar>
                   </div>
                   
-                  <h1 className="text-2xl font-bold text-foreground mb-4">{displayUser.name}</h1>
+                  <h1 className="text-2xl font-bold text-foreground mb-1">{displayUser.name}</h1>
+
+                  {/* 레벨 + XP 바 */}
+                  {(() => {
+                    const xp = displayUser.stats.totalPoints;
+                    const lvl = getUserLevel(xp);
+                    const { percent, remaining } = getLevelProgress(xp);
+                    return (
+                      <div className="w-full mb-4">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full text-white ${lvl.bgClass}`}>
+                            Lv.{lvl.level}
+                          </span>
+                          <span className="text-sm font-semibold text-foreground">{lvl.emoji} {lvl.title}</span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${lvl.bgClass} rounded-full transition-all duration-700`}
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                        {remaining > 0 && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {xp} XP · 다음 레벨까지 {remaining} XP
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   <div className="flex gap-2 flex-wrap">
                     <Button 
@@ -265,26 +294,37 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
 
                 {/* 통계 그리드 */}
                 <div className="flex-1">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-2 mb-2">
                     <Card className="p-3 text-center hover-elevate cursor-pointer" data-testid="stat-posts">
-                      <div className="text-2xl font-bold text-foreground">{displayUser.stats.posts}</div>
-                      <div className="text-xs text-muted-foreground">게시물</div>
+                      <div className="text-xl font-bold text-foreground">{displayUser.stats.posts}</div>
+                      <div className="text-xs text-muted-foreground">등록 맛집</div>
                     </Card>
                     <Card className="p-3 text-center hover-elevate cursor-pointer" data-testid="stat-followers">
-                      <div className="text-2xl font-bold text-foreground">{displayUser.stats.followers.toLocaleString()}</div>
+                      <div className="text-xl font-bold text-foreground">{displayUser.stats.followers.toLocaleString()}</div>
                       <div className="text-xs text-muted-foreground">팔로워</div>
                     </Card>
                     <Card className="p-3 text-center hover-elevate cursor-pointer" data-testid="stat-following">
-                      <div className="text-2xl font-bold text-foreground">{displayUser.stats.following}</div>
+                      <div className="text-xl font-bold text-foreground">{displayUser.stats.following}</div>
                       <div className="text-xs text-muted-foreground">팔로잉</div>
                     </Card>
-                    <Card 
-                      className="p-3 text-center hover-elevate cursor-pointer" 
+                  </div>
+                  {/* 영향력 stats */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <Card
+                      className="p-3 text-center hover-elevate cursor-pointer"
                       data-testid="stat-total-points"
                       onClick={() => setShowPointsDialog(true)}
                     >
-                      <div className="text-2xl font-bold text-foreground">{displayUser.stats.totalPoints.toLocaleString()}</div>
-                      <div className="text-xs text-muted-foreground">내 점수</div>
+                      <div className="text-xl font-bold text-primary">{displayUser.stats.totalPoints.toLocaleString()}</div>
+                      <div className="text-xs text-muted-foreground">XP</div>
+                    </Card>
+                    <Card className="p-3 text-center" data-testid="stat-influence">
+                      <div className="text-xl font-bold text-emerald-600">47</div>
+                      <div className="text-xs text-muted-foreground">영향력</div>
+                    </Card>
+                    <Card className="p-3 text-center" data-testid="stat-thanks">
+                      <div className="text-xl font-bold text-amber-500">8</div>
+                      <div className="text-xs text-muted-foreground">받은 감사</div>
                     </Card>
                   </div>
                 </div>

@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+import { apiRequest } from "@/lib/queryClient";
 import TopHeader from "@/components/TopHeader";
 import BottomNavigation from "@/components/BottomNavigation";
 import InviteFriendDialog from "@/components/InviteFriendDialog";
@@ -55,28 +54,11 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // API 호출 헬퍼 함수
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("accessToken");
-    return {
-      "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
-    };
-  };
-
   // 내 정보 조회
   const { data: userInfo, isLoading: isLoadingUser, error: userError } = useQuery<UserInfo>({
     queryKey: ["user", "me"],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
-        method: "GET",
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        throw new Error("사용자 정보를 불러올 수 없습니다.");
-      }
-
+      const response = await apiRequest("GET", "/api/v1/users/me");
       const json = await response.json();
       return json.data as UserInfo;
     },
@@ -85,17 +67,7 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
   // 프로필 수정 mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { nickname: string }) => {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
-        method: "PATCH",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || "프로필 수정에 실패했습니다.");
-      }
-
+      const response = await apiRequest("PATCH", "/api/v1/users/me", data);
       return response.json();
     },
     onSuccess: () => {
@@ -124,10 +96,7 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
   const { data: myReviewsData } = useQuery({
     queryKey: ["user", "me", "reviews"],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/me/reviews`, {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("후기 목록 조회 실패");
+      const response = await apiRequest("GET", "/api/v1/users/me/reviews");
       const json = await response.json();
       return (json.data?.content ?? []) as ReviewItem[];
     },
@@ -142,12 +111,13 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
     queryFn: async () => {
       const results = await Promise.all(
         savedRestaurantIds.map(async (id) => {
-          const response = await fetch(`${API_BASE_URL}/api/v1/restaurants/${id}`, {
-            headers: getAuthHeaders(),
-          });
-          if (!response.ok) return null;
-          const json = await response.json();
-          return json.data as RestaurantItem;
+          try {
+            const response = await apiRequest("GET", `/api/v1/restaurants/${id}`);
+            const json = await response.json();
+            return json.data as RestaurantItem;
+          } catch {
+            return null;
+          }
         })
       );
       return results.filter((r): r is RestaurantItem => r !== null);

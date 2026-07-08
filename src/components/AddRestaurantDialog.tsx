@@ -16,13 +16,6 @@ import CategoryBadge from "./CategoryBadge";
 import { MapPin, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-
-function getAuthHeaders(): Record<string, string> {
-  const token = typeof localStorage !== "undefined" ? localStorage.getItem("accessToken") : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 declare global {
   interface Window {
     kakao: any;
@@ -62,12 +55,10 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
 
     try {
       // 서버 프록시를 통해 네이버 검색 (좌표/주소/카테고리 + 네이버 플레이스 URL)
-      const response = await fetch(
-        `${API_BASE_URL}/api/v1/restaurants/search/naver?query=${encodeURIComponent(searchQuery)}`,
-        { headers: getAuthHeaders() }
+      const response = await apiRequest(
+        "GET",
+        `/api/v1/restaurants/search/naver?query=${encodeURIComponent(searchQuery)}`
       );
-      if (!response.ok) throw new Error("검색 실패");
-
       const body = await response.json();
       const list: any[] = body.data ?? [];
       if (list.length > 0) {

@@ -10,8 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, MapPin, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+import { apiRequest } from "@/lib/queryClient";
 
 const CATEGORIES = ["전체", "한식", "일식", "중식", "양식", "분식", "치킨", "카페", "기타"];
 
@@ -24,11 +23,6 @@ interface RestaurantResult {
   name: string;
   category: string;
   address: string;
-}
-
-function getAuthHeaders(): Record<string, string> {
-  const token = typeof localStorage !== "undefined" ? localStorage.getItem("accessToken") : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 export default function SearchPage({ onNavigate }: SearchPageProps = {}) {
@@ -46,11 +40,7 @@ export default function SearchPage({ onNavigate }: SearchPageProps = {}) {
       const params = new URLSearchParams();
       params.set("keyword", submittedQuery);
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/v1/restaurants/search?${params.toString()}`,
-        { headers: getAuthHeaders() }
-      );
-      if (!response.ok) throw new Error("검색 실패");
+      const response = await apiRequest("GET", `/api/v1/restaurants/search?${params.toString()}`);
       const json = await response.json();
       const list = (json.data?.content ?? []) as RestaurantResult[];
       if (activeCategory === "전체") return list;

@@ -11,13 +11,6 @@ import InviteFriendDialog from "@/components/InviteFriendDialog";
 import { NakNakLogo } from "@/components/NakNakLogo";
 import { Search, UserPlus, Check, Loader2, Sparkles, Users } from "lucide-react";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-
-function getAuthHeaders(): Record<string, string> {
-  const token = typeof localStorage !== "undefined" ? localStorage.getItem("accessToken") : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 interface SuggestedUser {
   id: string;
   nickname: string;
@@ -47,8 +40,7 @@ export default function OnboardingFriends() {
   const { data: me } = useQuery({
     queryKey: ["user", "me", "onboarding"],
     queryFn: async () => {
-      const res = await fetch(`${API_BASE_URL}/api/v1/users/me`, { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error("내 정보 조회 실패");
+      const res = await apiRequest("GET", "/api/v1/users/me");
       return res.json();
     },
     retry: false,
@@ -60,11 +52,7 @@ export default function OnboardingFriends() {
     if (!keyword.trim()) return;
     setIsSearching(true);
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/v1/users/search?keyword=${encodeURIComponent(keyword)}`,
-        { headers: getAuthHeaders() }
-      );
-      if (!res.ok) throw new Error("검색 실패");
+      const res = await apiRequest("GET", `/api/v1/users/search?keyword=${encodeURIComponent(keyword)}`);
       const body = await res.json();
       const list: SuggestedUser[] = body.data ?? body ?? [];
       setSearchResults(list);

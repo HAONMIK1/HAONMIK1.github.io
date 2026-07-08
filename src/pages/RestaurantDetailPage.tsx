@@ -10,13 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-
-function getAuthHeaders(): Record<string, string> {
-  const token = typeof localStorage !== "undefined" ? localStorage.getItem("accessToken") : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+import { apiRequest } from "@/lib/queryClient";
 
 interface RestaurantDetailPageProps {
   onNavigate?: (id: string) => void;
@@ -48,10 +42,7 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId }: Resta
   const { data: restaurant, isLoading: isLoadingRestaurant } = useQuery<RestaurantDetail>({
     queryKey: ["restaurant", restaurantId],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/v1/restaurants/${restaurantId}`, {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("식당 정보 조회 실패");
+      const response = await apiRequest("GET", `/api/v1/restaurants/${restaurantId}`);
       const json = await response.json();
       return json.data as RestaurantDetail;
     },
@@ -63,10 +54,7 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId }: Resta
   const { data: allReviews } = useQuery<ReviewItem[]>({
     queryKey: ["restaurant", restaurantId, "reviews"],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/v1/restaurants/${restaurantId}/reviews`, {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("후기 목록 조회 실패");
+      const response = await apiRequest("GET", `/api/v1/restaurants/${restaurantId}/reviews`);
       const json = await response.json();
       return (json.data?.content ?? []) as ReviewItem[];
     },

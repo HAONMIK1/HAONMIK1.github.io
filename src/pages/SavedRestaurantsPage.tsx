@@ -6,14 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSavedRestaurants } from "@/hooks/useSavedRestaurants";
+import { apiRequest } from "@/lib/queryClient";
 import { Bookmark, BookmarkX, Loader2, MapPin, UtensilsCrossed } from "lucide-react";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
-
-function getAuthHeaders(): Record<string, string> {
-  const token = typeof localStorage !== "undefined" ? localStorage.getItem("accessToken") : null;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 interface SavedRestaurantsPageProps {
   onNavigate?: (id: string) => void;
@@ -36,10 +30,13 @@ export default function SavedRestaurantsPage({ onNavigate }: SavedRestaurantsPag
     queryFn: async () => {
       const results = await Promise.all(
         savedIds.map(async (id) => {
-          const res = await fetch(`${API_BASE_URL}/api/v1/restaurants/${id}`, { headers: getAuthHeaders() });
-          if (!res.ok) return null;
-          const json = await res.json();
-          return json.data as RestaurantItem;
+          try {
+            const res = await apiRequest("GET", `/api/v1/restaurants/${id}`);
+            const json = await res.json();
+            return json.data as RestaurantItem;
+          } catch {
+            return null;
+          }
         })
       );
       return results.filter((r): r is RestaurantItem => r !== null);

@@ -9,9 +9,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { Copy, Share2, MessageCircle, Loader2 } from "lucide-react";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
 interface InviteFriendDialogProps {
   open: boolean;
@@ -32,15 +31,10 @@ export default function InviteFriendDialog({ open, onOpenChange }: InviteFriendD
   const fetchInviteCode = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem("accessToken");
-      const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (response.ok) {
-        const body = await response.json();
-        if (body.data?.inviteCode) {
-          setInviteCode(body.data.inviteCode);
-        }
+      const response = await apiRequest("GET", "/api/v1/users/me");
+      const body = await response.json();
+      if (body.data?.inviteCode) {
+        setInviteCode(body.data.inviteCode);
       }
     } finally {
       setIsLoading(false);

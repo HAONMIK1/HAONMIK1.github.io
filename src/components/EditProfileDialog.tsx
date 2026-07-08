@@ -3,34 +3,29 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
 interface EditProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentNickname: string;
-  currentBio?: string;
-  onSave?: (nickname: string, bio: string) => void;
+  onSave?: (nickname: string) => void;
 }
 
 export default function EditProfileDialog({
   open,
   onOpenChange,
   currentNickname,
-  currentBio = "",
   onSave,
 }: EditProfileDialogProps) {
   const [nickname, setNickname] = useState(currentNickname);
-  const [bio, setBio] = useState(currentBio);
   const { toast } = useToast();
 
   useEffect(() => {
     if (open) {
       setNickname(currentNickname);
-      setBio(currentBio);
     }
-  }, [open, currentNickname, currentBio]);
+  }, [open, currentNickname]);
 
   const handleSave = () => {
     const trimmedNickname = nickname.trim();
@@ -51,8 +46,8 @@ export default function EditProfileDialog({
       return;
     }
 
-    onSave?.(trimmedNickname, bio.trim());
-    
+    onSave?.(trimmedNickname);
+
     toast({
       title: "프로필이 수정되었습니다",
     });
@@ -80,22 +75,6 @@ export default function EditProfileDialog({
             />
             <p className="text-xs text-muted-foreground">
               {nickname.trim().length}/10자
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="bio">소개</Label>
-            <Textarea
-              id="bio"
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="자기소개를 입력해주세요"
-              maxLength={100}
-              rows={3}
-              data-testid="input-bio"
-            />
-            <p className="text-xs text-muted-foreground">
-              {bio.length}/100자
             </p>
           </div>
         </div>

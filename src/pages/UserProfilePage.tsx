@@ -13,19 +13,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSavedRestaurants } from "@/hooks/useSavedRestaurants";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Settings, MapPin, Star, Heart, UserPlus, TrendingUp
+import {
+  Settings, MapPin, Star, Heart, UserPlus, UtensilsCrossed
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-
-const kbbqImage = "/generated_images/Korean_BBQ_galbi_food_photo_1abb752a.png";
-const bibimbapImage = "/generated_images/Bibimbap_stone_bowl_dish_f859dd5c.png";
 
 interface UserProfilePageProps {
   onNavigate?: (id: string) => void;
@@ -34,13 +25,25 @@ interface UserProfilePageProps {
 interface UserInfo {
   id: number;
   email: string;
-  name: string;
   nickname: string;
   inviteCode: string;
-  score: number;
-  restaurantCount: number;
-  followingCount: number;
-  followerCount: number;
+}
+
+interface ReviewItem {
+  id: number;
+  restaurantId: number;
+  restaurantName: string;
+  content: string;
+  rating: number;
+  imageUrls: string[];
+  createdAt: string;
+}
+
+interface RestaurantItem {
+  id: number;
+  name: string;
+  category: string;
+  address: string;
 }
 
 export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {}) {
@@ -48,7 +51,6 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
   const [, setLocation] = useLocation();
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showPointsDialog, setShowPointsDialog] = useState(false);
   const { savedIds: savedRestaurantIds } = useSavedRestaurants();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -75,7 +77,8 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
         throw new Error("사용자 정보를 불러올 수 없습니다.");
       }
 
-      return response.json();
+      const json = await response.json();
+      return json.data as UserInfo;
     },
   });
 
@@ -83,7 +86,7 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { nickname: string }) => {
       const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
-        method: "PUT",
+        method: "PATCH",
         headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
@@ -111,57 +114,11 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
     },
   });
 
-  const handleProfileSave = (nickname: string, _bio?: string) => {
+  const handleProfileSave = (nickname: string) => {
     updateProfileMutation.mutate({ nickname });
   };
 
-  // API 데이터를 기반으로 사용자 정보 구성
-  const displayUser = userInfo ? {
-    name: userInfo.nickname || userInfo.name || "사용자",
-    bio: "서울 강남 맛집 전문가 · 진짜 맛집만 소개합니다", // bio는 아직 API에 없음
-    stats: {
-      posts: userInfo.restaurantCount || 0,
-      followers: userInfo.followerCount || 0,
-      following: userInfo.followingCount || 0,
-      weeklyPoints: 0, // 아직 API에 없음
-      monthlyPoints: 0, // 아직 API에 없음
-      totalPoints: userInfo.score || 0,
-    },
-  } : {
-    name: "로딩 중...",
-    bio: "",
-    stats: {
-      posts: 0,
-      followers: 0,
-      following: 0,
-      weeklyPoints: 0,
-      monthlyPoints: 0,
-      totalPoints: 0,
-    },
-  };
-
-  const fallbackReviews = [
-    {
-      id: "review1",
-      restaurant: { id: "rest1", name: "우동신 역삼점", imageUrl: kbbqImage },
-      rating: 5,
-      date: "2024-11-06",
-      recommendedMenu: "가라아게 우동",
-      text: "오늘도 점심 찾고고 금액도 저렴네요. 특히 가라아게는 꼭 드셔보세요!",
-      hasReceipt: true,
-      likes: 24,
-    },
-    {
-      id: "review2",
-      restaurant: { id: "rest2", name: "성수돈까스", imageUrl: bibimbapImage },
-      rating: 4,
-      date: "2024-11-05",
-      recommendedMenu: "등심 돈까스",
-      text: "바삭하고 두툼한 돈까스가 일품이에요. 소스도 맛있습니다!",
-      hasReceipt: false,
-      likes: 15,
-    },
-  ];
+  const displayName = userInfo?.nickname || "사용자";
 
   // 내 후기 목록 API
   const { data: myReviewsData } = useQuery({
@@ -171,27 +128,34 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error("후기 목록 조회 실패");
-      return response.json();
+      const json = await response.json();
+      return (json.data?.content ?? []) as ReviewItem[];
     },
     retry: false,
   });
 
-  const myReviews = myReviewsData ?? fallbackReviews;
+  const myReviews = myReviewsData ?? [];
 
-  // 저장한 레스토랑 API
+  // 저장한 맛집: localStorage(useSavedRestaurants)에 담긴 id들을 실제 맛집 상세 API로 조회
   const { data: savedRestaurantsData } = useQuery({
-    queryKey: ["restaurants", "saved"],
+    queryKey: ["restaurants", "saved", savedRestaurantIds],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/api/v1/restaurants/saved`, {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("저장 목록 조회 실패");
-      return response.json();
+      const results = await Promise.all(
+        savedRestaurantIds.map(async (id) => {
+          const response = await fetch(`${API_BASE_URL}/api/v1/restaurants/${id}`, {
+            headers: getAuthHeaders(),
+          });
+          if (!response.ok) return null;
+          const json = await response.json();
+          return json.data as RestaurantItem;
+        })
+      );
+      return results.filter((r): r is RestaurantItem => r !== null);
     },
-    retry: false,
+    enabled: savedRestaurantIds.length > 0,
   });
 
-  const mockSavedRestaurants = savedRestaurantsData ?? [];
+  const mySavedRestaurants = savedRestaurantsData ?? [];
 
   if (isLoadingUser) {
     return (
@@ -235,24 +199,24 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
                   <div className="relative mb-3">
                     <Avatar className="w-24 h-24 border-4 border-background shadow-lg">
                       <AvatarImage src="" />
-                      <AvatarFallback className="text-2xl font-bold">{displayUser.name[0]}</AvatarFallback>
+                      <AvatarFallback className="text-2xl font-bold">{displayName[0]}</AvatarFallback>
                     </Avatar>
                   </div>
-                  
-                  <h1 className="text-2xl font-bold text-foreground mb-4">{displayUser.name}</h1>
+
+                  <h1 className="text-2xl font-bold text-foreground mb-4">{displayName}</h1>
 
                   <div className="flex gap-2 flex-wrap">
-                    <Button 
-                      variant="default" 
-                      className="gap-2" 
+                    <Button
+                      variant="default"
+                      className="gap-2"
                       onClick={() => setShowEditDialog(true)}
                       data-testid="button-edit-profile"
                     >
                       <Settings className="w-4 h-4" />
                       프로필 수정
                     </Button>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       className="gap-2"
                       onClick={() => setShowInviteDialog(true)}
                       data-testid="button-invite-friend"
@@ -263,28 +227,16 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
                   </div>
                 </div>
 
-                {/* 통계 그리드 */}
+                {/* 통계 (현재 API에서 제공하는 값만 표시) */}
                 <div className="flex-1">
                   <div className="grid grid-cols-2 gap-3">
-                    <Card className="p-3 text-center hover-elevate cursor-pointer" data-testid="stat-posts">
-                      <div className="text-2xl font-bold text-foreground">{displayUser.stats.posts}</div>
-                      <div className="text-xs text-muted-foreground">게시물</div>
+                    <Card className="p-3 text-center" data-testid="stat-posts">
+                      <div className="text-2xl font-bold text-foreground">{myReviews.length}</div>
+                      <div className="text-xs text-muted-foreground">작성한 후기</div>
                     </Card>
-                    <Card className="p-3 text-center hover-elevate cursor-pointer" data-testid="stat-followers">
-                      <div className="text-2xl font-bold text-foreground">{displayUser.stats.followers.toLocaleString()}</div>
-                      <div className="text-xs text-muted-foreground">팔로워</div>
-                    </Card>
-                    <Card className="p-3 text-center hover-elevate cursor-pointer" data-testid="stat-following">
-                      <div className="text-2xl font-bold text-foreground">{displayUser.stats.following}</div>
-                      <div className="text-xs text-muted-foreground">팔로잉</div>
-                    </Card>
-                    <Card 
-                      className="p-3 text-center hover-elevate cursor-pointer" 
-                      data-testid="stat-total-points"
-                      onClick={() => setShowPointsDialog(true)}
-                    >
-                      <div className="text-2xl font-bold text-foreground">{displayUser.stats.totalPoints.toLocaleString()}</div>
-                      <div className="text-xs text-muted-foreground">내 점수</div>
+                    <Card className="p-3 text-center" data-testid="stat-saved">
+                      <div className="text-2xl font-bold text-foreground">{savedRestaurantIds.length}</div>
+                      <div className="text-xs text-muted-foreground">저장한 맛집</div>
                     </Card>
                   </div>
                 </div>
@@ -302,54 +254,60 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
             </TabsList>
 
             <TabsContent value="reviews" className="mt-4 space-y-3">
-              {myReviews.map((review) => (
-                <Card
-                  key={review.id}
-                  className="hover-elevate cursor-pointer border-primary"
-                  onClick={() => {
-                    setLocation(`/review/${review.id}`);
-                  }}
-                  data-testid={`my-review-${review.id}`}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex gap-3 mb-3">
-                      <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                        <img
-                          src={review.restaurant.imageUrl}
-                          alt={review.restaurant.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-sm text-foreground mb-1 truncate">
-                          {review.restaurant.name}
-                        </h3>
-                        <div className="flex items-center gap-1 mb-1">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`w-3 h-3 ${
-                                i < review.rating
-                                  ? "fill-primary text-primary"
-                                  : "text-muted-foreground"
-                              }`}
+              {myReviews.length === 0 ? (
+                <div className="text-center py-16 text-muted-foreground">
+                  <Star className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-lg font-medium mb-1">작성한 후기가 없습니다</p>
+                  <p className="text-sm">맛집에 다녀오고 첫 후기를 남겨보세요!</p>
+                </div>
+              ) : (
+                myReviews.map((review) => (
+                  <Card
+                    key={review.id}
+                    className="hover-elevate cursor-pointer"
+                    onClick={() => setLocation(`/restaurant/${review.restaurantId}`)}
+                    data-testid={`my-review-${review.id}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex gap-3 mb-3">
+                        <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
+                          {review.imageUrls[0] ? (
+                            <img
+                              src={review.imageUrls[0]}
+                              alt={review.restaurantName}
+                              className="w-full h-full object-cover"
                             />
-                          ))}
+                          ) : (
+                            <UtensilsCrossed className="w-6 h-6 text-muted-foreground" />
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground">{review.date}</p>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-sm text-foreground mb-1 truncate">
+                            {review.restaurantName}
+                          </h3>
+                          <div className="flex items-center gap-1 mb-1">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`w-3 h-3 ${
+                                  i < review.rating
+                                    ? "fill-primary text-primary"
+                                    : "text-muted-foreground"
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(review.createdAt).toLocaleDateString("ko-KR")}
+                          </p>
+                        </div>
                       </div>
-                    </div>
 
-                    {review.recommendedMenu && (
-                      <Badge variant="outline" className="mb-2 text-xs">
-                        추천: {review.recommendedMenu}
-                      </Badge>
-                    )}
-
-                    <p className="text-sm text-foreground line-clamp-2">{review.text}</p>
-                  </CardContent>
-                </Card>
-              ))}
+                      <p className="text-sm text-foreground line-clamp-2">{review.content}</p>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </TabsContent>
 
             <TabsContent value="saved" className="mt-4 space-y-3">
@@ -364,14 +322,14 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
                   전체 보기 →
                 </Button>
               </div>
-              {mockSavedRestaurants.length === 0 ? (
+              {mySavedRestaurants.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <Heart className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p className="text-lg font-medium mb-1">저장한 맛집이 없습니다</p>
                   <p className="text-sm">마음에 드는 맛집을 저장해보세요!</p>
                 </div>
               ) : (
-                mockSavedRestaurants.map((restaurant) => (
+                mySavedRestaurants.map((restaurant) => (
                   <Card
                     key={restaurant.id}
                     className="hover-elevate cursor-pointer"
@@ -380,26 +338,13 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
                   >
                     <CardContent className="p-4">
                       <div className="flex gap-3">
-                        <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                          <img
-                            src={restaurant.imageUrl}
-                            alt={restaurant.name}
-                            className="w-full h-full object-cover"
-                          />
+                        <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
+                          <UtensilsCrossed className="w-6 h-6 text-muted-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="font-bold text-sm text-foreground mb-1 truncate">
                             {restaurant.name}
                           </h3>
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="flex items-center gap-1">
-                              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                              <span className="text-sm font-semibold">{restaurant.rating}</span>
-                            </div>
-                            <span className="text-xs text-muted-foreground">
-                              {restaurant.reviewCount}개 후기
-                            </span>
-                          </div>
                           <Badge variant="outline" className="mb-1 text-xs">
                             {restaurant.category}
                           </Badge>
@@ -426,46 +371,9 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
       <EditProfileDialog
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
-        currentNickname={displayUser.name}
-        currentBio={displayUser.bio}
+        currentNickname={displayName}
         onSave={handleProfileSave}
       />
-
-      <Dialog open={showPointsDialog} onOpenChange={setShowPointsDialog}>
-        <DialogContent className="max-w-md" data-testid="dialog-points">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              내 점수
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <Card className="p-4 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground mb-1">이번 주</div>
-                <div className="text-3xl font-bold text-primary">{displayUser.stats.weeklyPoints.toLocaleString()}</div>
-                <div className="text-xs text-muted-foreground mt-1">포인트</div>
-              </div>
-            </Card>
-            
-            <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/30 dark:to-green-900/30 border-green-200 dark:border-green-800">
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground mb-1">이번 달</div>
-                <div className="text-3xl font-bold text-green-600 dark:text-green-400">{displayUser.stats.monthlyPoints.toLocaleString()}</div>
-                <div className="text-xs text-muted-foreground mt-1">포인트</div>
-              </div>
-            </Card>
-            
-            <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/30 border-purple-200 dark:border-purple-800">
-              <div className="text-center">
-                <div className="text-sm text-muted-foreground mb-1">누적</div>
-                <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">{displayUser.stats.totalPoints.toLocaleString()}</div>
-                <div className="text-xs text-muted-foreground mt-1">포인트</div>
-              </div>
-            </Card>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <BottomNavigation onNavigate={onNavigate} />
     </div>

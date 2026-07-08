@@ -185,7 +185,6 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
     <div className="min-h-screen bg-background pb-20">
       <TopHeader
         onInviteFriendClick={() => setShowInviteDialog(true)}
-        onSearchClick={() => setLocation("/search")}
       />
 
       <div className="max-w-5xl mx-auto">

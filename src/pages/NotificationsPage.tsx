@@ -1,4 +1,3 @@
-import { useLocation } from "wouter";
 import TopHeader from "@/components/TopHeader";
 import BottomNavigation from "@/components/BottomNavigation";
 import { Bell } from "lucide-react";
@@ -8,11 +7,9 @@ interface NotificationsPageProps {
 }
 
 export default function NotificationsPage({ onNavigate }: NotificationsPageProps = {}) {
-  const [, setLocation] = useLocation();
-
   return (
     <div className="min-h-screen bg-background pb-20">
-      <TopHeader onSearchClick={() => setLocation("/search")} />
+      <TopHeader />
 
       <div className="max-w-2xl mx-auto p-4">
         <div className="flex items-center gap-3 mb-6">

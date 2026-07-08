@@ -51,7 +51,7 @@ export default function SavedRestaurantsPage({ onNavigate }: SavedRestaurantsPag
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <TopHeader onSearchClick={() => setLocation("/search")} />
+      <TopHeader />
 
       <div className="max-w-4xl mx-auto p-4">
         <div className="flex items-center gap-3 mb-6">
@@ -72,10 +72,7 @@ export default function SavedRestaurantsPage({ onNavigate }: SavedRestaurantsPag
           <div className="text-center py-20">
             <Bookmark className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
             <p className="text-muted-foreground mb-1">아직 저장한 맛집이 없어요</p>
-            <p className="text-sm text-muted-foreground mb-6">맘에 드는 맛집을 저장해보세요</p>
-            <Button onClick={() => setLocation("/search")} data-testid="button-go-search">
-              맛집 검색하러 가기
-            </Button>
+            <p className="text-sm text-muted-foreground">맘에 드는 맛집을 저장해보세요</p>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">

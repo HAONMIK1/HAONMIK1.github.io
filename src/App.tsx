@@ -16,7 +16,6 @@ import LoginPage from "@/pages/LoginPage";
 import KakaoCallbackPage from "@/pages/KakaoCallbackPage";
 import SetNicknamePage from "@/pages/SetNicknamePage";
 import RestaurantDetailPage from "@/pages/RestaurantDetailPage";
-import SearchPage from "@/pages/SearchPage";
 import OnboardingFriends from "@/pages/OnboardingFriends";
 import MapPage from "@/pages/MapPage";
 import SavedRestaurantsPage from "@/pages/SavedRestaurantsPage";
@@ -74,9 +73,6 @@ function Router() {
       case "map":
         setLocation("/map");
         break;
-      case "search":
-        setLocation("/search");
-        break;
       case "saved":
         setLocation("/saved");
         break;
@@ -115,13 +111,6 @@ function Router() {
           {() => (
             <ProtectedRoute>
               <DiscoveryFeed onNavigate={handleNavigation} />
-            </ProtectedRoute>
-          )}
-        </Route>
-        <Route path="/search">
-          {() => (
-            <ProtectedRoute>
-              <SearchPage onNavigate={handleNavigation} />
             </ProtectedRoute>
           )}
         </Route>

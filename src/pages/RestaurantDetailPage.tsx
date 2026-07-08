@@ -9,7 +9,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { useLocation } from "wouter";
 import { useState } from "react";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
@@ -43,7 +42,6 @@ interface ReviewItem {
 }
 
 export default function RestaurantDetailPage({ onNavigate, restaurantId }: RestaurantDetailPageProps) {
-  const [, setLocation] = useLocation();
   const [showInviteDialog, setShowInviteDialog] = useState(false);
 
   // 식당 상세 API
@@ -180,7 +178,6 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId }: Resta
     <div className="min-h-screen bg-background pb-20">
       <TopHeader
         onInviteFriendClick={() => setShowInviteDialog(true)}
-        onSearchClick={() => setLocation("/search")}
       />
 
       <div className="max-w-5xl mx-auto">

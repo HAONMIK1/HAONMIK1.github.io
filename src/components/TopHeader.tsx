@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Search, Users, Bell } from "lucide-react";
+import { Users, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NakNakLogo } from "@/components/NakNakLogo";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +7,6 @@ import { useLocation } from "wouter";
 
 interface TopHeaderProps {
   onInviteFriendClick?: () => void;
-  onSearchClick?: () => void;
   onFriendsClick?: () => void;
   friendsCount?: number;
   className?: string;
@@ -17,25 +16,17 @@ interface TopHeaderProps {
   onLocationClick?: () => void;
   onNotificationClick?: () => void;
   onSearch?: () => void;
+  onSearchClick?: () => void;
 }
 
 export default function TopHeader({
   onInviteFriendClick,
-  onSearchClick,
   onFriendsClick,
   friendsCount = 0,
   notificationCount = 0,
   className,
 }: TopHeaderProps) {
   const [, setLocation] = useLocation();
-
-  const handleSearchClick = () => {
-    if (onSearchClick) {
-      onSearchClick();
-    } else {
-      setLocation("/search");
-    }
-  };
 
   return (
     <header
@@ -52,16 +43,6 @@ export default function TopHeader({
         </div>
 
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleSearchClick}
-            className="text-muted-foreground hover:text-foreground"
-            data-testid="button-header-search"
-          >
-            <Search className="w-5 h-5" />
-          </Button>
-
           <Button
             variant="ghost"
             size="icon"

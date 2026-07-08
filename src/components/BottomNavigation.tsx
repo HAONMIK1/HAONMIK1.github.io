@@ -23,7 +23,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 function getActiveId(pathname: string): string {
-  if (pathname === "/" || pathname.startsWith("/restaurant") || pathname.startsWith("/review") || pathname === "/search") return "home";
+  if (pathname === "/" || pathname.startsWith("/restaurant") || pathname.startsWith("/review")) return "home";
   if (pathname.startsWith("/map")) return "map";
   if (pathname.startsWith("/rankings")) return "rankings";
   if (pathname.startsWith("/profile")) return "profile";

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, MapPin, Star, X } from "lucide-react";
+import { Search, MapPin, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
@@ -20,14 +20,10 @@ interface SearchPageProps {
 }
 
 interface RestaurantResult {
-  restaurantId: string;
+  id: number;
   name: string;
   category: string;
   address: string;
-  roadAddress?: string;
-  ratingAverage: number;
-  reviewCount?: number;
-  photoUrl?: string;
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -43,22 +39,24 @@ export default function SearchPage({ onNavigate }: SearchPageProps = {}) {
   const [showInviteDialog, setShowInviteDialog] = useState(false);
 
   const { data: results, isLoading, isFetching } = useQuery<RestaurantResult[]>({
-    queryKey: ["search", submittedQuery, activeCategory],
+    queryKey: ["search", submittedQuery],
     queryFn: async () => {
-      if (!submittedQuery && activeCategory === "전체") return [];
+      if (!submittedQuery) return [];
 
       const params = new URLSearchParams();
-      if (submittedQuery) params.set("q", submittedQuery);
-      if (activeCategory !== "전체") params.set("category", activeCategory);
+      params.set("keyword", submittedQuery);
 
       const response = await fetch(
         `${API_BASE_URL}/api/v1/restaurants/search?${params.toString()}`,
         { headers: getAuthHeaders() }
       );
       if (!response.ok) throw new Error("검색 실패");
-      return response.json();
+      const json = await response.json();
+      const list = (json.data?.content ?? []) as RestaurantResult[];
+      if (activeCategory === "전체") return list;
+      return list.filter((r) => r.category === activeCategory);
     },
-    enabled: !!(submittedQuery || activeCategory !== "전체"),
+    enabled: !!submittedQuery,
     retry: false,
   });
 
@@ -80,7 +78,7 @@ export default function SearchPage({ onNavigate }: SearchPageProps = {}) {
     setSubmittedQuery(query.trim());
   };
 
-  const showResults = submittedQuery || activeCategory !== "전체";
+  const showResults = !!submittedQuery;
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -152,26 +150,16 @@ export default function SearchPage({ onNavigate }: SearchPageProps = {}) {
               </p>
               {results.map((restaurant) => (
                 <Card
-                  key={restaurant.restaurantId}
+                  key={restaurant.id}
                   className="hover-elevate cursor-pointer"
-                  onClick={() => setLocation(`/restaurant/${restaurant.restaurantId}`)}
-                  data-testid={`search-result-${restaurant.restaurantId}`}
+                  onClick={() => setLocation(`/restaurant/${restaurant.id}`)}
+                  data-testid={`search-result-${restaurant.id}`}
                 >
                   <CardContent className="p-4">
                     <div className="flex gap-3">
-                      {restaurant.photoUrl ? (
-                        <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-                          <img
-                            src={restaurant.photoUrl}
-                            alt={restaurant.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                          <MapPin className="w-6 h-6 text-muted-foreground" />
-                        </div>
-                      )}
+                      <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                        <MapPin className="w-6 h-6 text-muted-foreground" />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <h3 className="font-bold text-sm text-foreground truncate">
@@ -181,24 +169,9 @@ export default function SearchPage({ onNavigate }: SearchPageProps = {}) {
                             {restaurant.category}
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <div className="flex items-center gap-1">
-                            <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                            <span className="text-sm font-semibold">
-                              {restaurant.ratingAverage?.toFixed(1) ?? "-"}
-                            </span>
-                          </div>
-                          {restaurant.reviewCount !== undefined && (
-                            <span className="text-xs text-muted-foreground">
-                              {restaurant.reviewCount}개 후기
-                            </span>
-                          )}
-                        </div>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <MapPin className="w-3 h-3 flex-shrink-0" />
-                          <span className="truncate">
-                            {restaurant.roadAddress || restaurant.address}
-                          </span>
+                          <span className="truncate">{restaurant.address}</span>
                         </div>
                       </div>
                     </div>

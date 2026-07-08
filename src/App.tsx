@@ -59,7 +59,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function Router() {
   const [, setLocation] = useLocation();
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [restaurants, setRestaurants] = useState<any[]>([]);
 
   const handleNavigation = (id: string) => {
     switch (id) {
@@ -94,7 +93,7 @@ function Router() {
   };
 
   const handleRestaurantAdded = (restaurant: any) => {
-    setRestaurants((prev) => [restaurant, ...prev]);
+    if (restaurant?.id) setLocation(`/restaurant/${restaurant.id}`);
   };
 
   return (
@@ -115,7 +114,7 @@ function Router() {
         <Route path="/">
           {() => (
             <ProtectedRoute>
-              <DiscoveryFeed onNavigate={handleNavigation} newRestaurants={restaurants} />
+              <DiscoveryFeed onNavigate={handleNavigation} />
             </ProtectedRoute>
           )}
         </Route>
@@ -151,13 +150,6 @@ function Router() {
           {(params) => (
             <ProtectedRoute>
               <RestaurantDetailPage onNavigate={handleNavigation} restaurantId={params.id} />
-            </ProtectedRoute>
-          )}
-        </Route>
-        <Route path="/review/:id">
-          {(params) => (
-            <ProtectedRoute>
-              <RestaurantDetailPage onNavigate={handleNavigation} restaurantId={params.id?.split("-")[0] ?? "1"} reviewId={params.id} />
             </ProtectedRoute>
           )}
         </Route>

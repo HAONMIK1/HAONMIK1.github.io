@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import {
   Dialog,
@@ -13,8 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import StarRating from "./StarRating";
 import CategoryBadge from "./CategoryBadge";
-import { MapPin, Upload, DollarSign, Clock, Coins, Search } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { MapPin, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
@@ -22,26 +21,6 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080
 function getAuthHeaders(): Record<string, string> {
   const token = typeof localStorage !== "undefined" ? localStorage.getItem("accessToken") : null;
   return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-// 네이버 검색 mock (백엔드 미연동 시 데모용)
-function naverMockResults(query: string) {
-  const q = query.trim();
-  const base = [
-    { suffix: "본점", category: "한식", lat: 37.4998, lng: 127.0365, road: "서울 강남구 테헤란로 152" },
-    { suffix: "역삼점", category: "일식", lat: 37.5006, lng: 127.0366, road: "서울 강남구 테헤란로 123" },
-    { suffix: "강남점", category: "카페", lat: 37.4979, lng: 127.0276, road: "서울 강남구 강남대로 396" },
-  ];
-  return base.map((b, i) => ({
-    name: `${q} ${b.suffix}`,
-    category: b.category,
-    roadAddress: b.road,
-    address: b.road,
-    latitude: b.lat,
-    longitude: b.lng,
-    naverPlaceId: `${10000000 + i}`,
-    naverPlaceUrl: `https://m.place.naver.com/restaurant/${10000000 + i}/home`,
-  }));
 }
 
 declare global {
@@ -60,9 +39,6 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
   const { toast } = useToast();
   const [rating, setRating] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState("");
-  const [hasPhotos, setHasPhotos] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -75,7 +51,6 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<{
     naverPlaceUrl?: string;
-    naverPlaceId?: string;
     latitude?: number;
     longitude?: number;
   }>({});
@@ -88,13 +63,13 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
     try {
       // 서버 프록시를 통해 네이버 검색 (좌표/주소/카테고리 + 네이버 플레이스 URL)
       const response = await fetch(
-        `${API_BASE_URL}/api/v1/naver/search?query=${encodeURIComponent(searchQuery)}`,
+        `${API_BASE_URL}/api/v1/restaurants/search/naver?query=${encodeURIComponent(searchQuery)}`,
         { headers: getAuthHeaders() }
       );
       if (!response.ok) throw new Error("검색 실패");
 
       const body = await response.json();
-      const list: any[] = body.data ?? body.documents ?? body ?? [];
+      const list: any[] = body.data ?? [];
       if (list.length > 0) {
         setSearchResults(list);
       } else {
@@ -102,8 +77,8 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
         toast({ title: "검색 결과가 없습니다", description: "다른 키워드로 검색해보세요." });
       }
     } catch (error) {
-      // 백엔드 미연동 시 mock 결과로 데모
-      setSearchResults(naverMockResults(searchQuery));
+      setSearchResults([]);
+      toast({ title: "검색 실패", description: "잠시 후 다시 시도해주세요.", variant: "destructive" });
     }
   };
 
@@ -117,8 +92,7 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
     });
 
     setSelectedPlace({
-      naverPlaceUrl: place.naverPlaceUrl,
-      naverPlaceId: place.naverPlaceId,
+      naverPlaceUrl: place.placeUrl,
       latitude: place.latitude,
       longitude: place.longitude,
     });
@@ -129,12 +103,6 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
 
     // 검색 결과만 초기화 (검색어는 유지)
     setSearchResults([]);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setSelectedFiles(files);
-    setHasPhotos(files.length > 0);
   };
 
   const handleBackToSearch = () => {
@@ -154,8 +122,6 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
   const resetForm = () => {
     setRating(0);
     setSelectedCategory("");
-    setHasPhotos(false);
-    setSelectedFiles([]);
     setSearchQuery("");
     setSearchResults([]);
     setSearchMode("search");
@@ -173,58 +139,49 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
       return;
     }
 
-    const payload = {
+    const restaurantPayload = {
       name: formData.name || "새로운 맛집",
       category: selectedCategory || "기타",
       address: formData.address || "",
-      rating,
-      recommendMenu: formData.recommendedMenu,
-      review: formData.review,
-      hashtag: formData.hashtag,
       naverPlaceUrl: selectedPlace.naverPlaceUrl,
-      naverPlaceId: selectedPlace.naverPlaceId,
       latitude: selectedPlace.latitude,
       longitude: selectedPlace.longitude,
     };
 
+    // 백엔드에 없는 추천메뉴/해시태그는 후기 본문에 합쳐서 사용자 입력이 사라지지 않게 한다
+    const contentParts = [];
+    if (formData.recommendedMenu.trim()) contentParts.push(`[추천메뉴: ${formData.recommendedMenu.trim()}]`);
+    contentParts.push(formData.review.trim());
+    if (formData.hashtag.trim()) contentParts.push(`#${formData.hashtag.trim()}`);
+    const content = contentParts.join("\n");
+
     setIsSubmitting(true);
     try {
-      const res = await apiRequest("POST", "/api/v1/restaurants", payload);
-      const saved = await res.json();
+      const restaurantRes = await apiRequest("POST", "/api/v1/restaurants", restaurantPayload);
+      const restaurantBody = await restaurantRes.json();
+      const savedRestaurant = restaurantBody.data;
+
+      const reviewRes = await apiRequest("POST", `/api/v1/restaurants/${savedRestaurant.id}/reviews`, {
+        content,
+        rating,
+        imageUrls: [],
+      });
+      const reviewBody = await reviewRes.json();
 
       if (onRestaurantAdded) {
-        onRestaurantAdded(saved);
+        onRestaurantAdded({ ...savedRestaurant, review: reviewBody.data });
       }
-      toast({ title: "맛집 등록 완료!", description: "새로운 맛집이 등록되었습니다." });
-    } catch {
-      // API 실패 시 로컬 상태에만 추가
-      const localRestaurant = {
-        id: `rest-${Date.now()}`,
-        name: payload.name,
-        category: payload.category,
-        imageUrl: "",
-        rating: payload.rating,
-        address: payload.address,
-        restaurantId: `rest-${Date.now()}`,
-        ratingAverage: payload.rating,
-        reviews: [{
-          userId: "me",
-          nickname: "나",
-          distance: 1,
-          rating: payload.rating,
-          recommendMenu: payload.recommendMenu,
-          content: payload.review,
-          createdAt: new Date().toISOString(),
-        }],
-      };
-      if (onRestaurantAdded) {
-        onRestaurantAdded(localRestaurant);
-      }
-      toast({ title: "맛집 등록 완료!", description: "새로운 맛집이 등록되었습니다." });
-    } finally {
-      setIsSubmitting(false);
+      toast({ title: "맛집 등록 완료!", description: "새로운 맛집과 후기가 등록되었습니다." });
       onOpenChange(false);
       resetForm();
+    } catch (error) {
+      toast({
+        title: "등록 실패",
+        description: error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -234,27 +191,11 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
         <DialogHeader>
           <DialogTitle className="text-2xl">맛집 등록하기</DialogTitle>
           <DialogDescription>
-            새로운 맛집을 등록하고 포인트를 받으세요
+            새로운 맛집을 등록하고 후기를 남겨보세요
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* 포인트 획득 정보 */}
-          <div className={`rounded-lg p-6 ${hasPhotos ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-            <p className="text-sm opacity-90 mb-2">등록 시 획득 점수</p>
-            <p className="text-4xl font-bold mb-4">{hasPhotos ? '1,000' : '500'}점</p>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between items-center">
-                <span>기본 후기</span>
-                <span className="font-medium">500점</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>📸 사진 추가</span>
-                <span className="font-medium">+500점 (총 1,000점)</span>
-              </div>
-            </div>
-          </div>
-
           {/* 검색 모드 토글 */}
               <div className="flex gap-2 mb-4">
                 <Button
@@ -310,10 +251,10 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
                       <div className="border rounded-lg divide-y max-h-80 overflow-y-auto">
                         {searchResults.map((place, idx) => (
                           <div
-                            key={place.naverPlaceId ?? idx}
+                            key={idx}
                             className="p-3 hover-elevate cursor-pointer"
                             onClick={() => handleSelectPlace(place)}
-                            data-testid={`search-result-${place.naverPlaceId ?? idx}`}
+                            data-testid={`search-result-${idx}`}
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
@@ -323,9 +264,9 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
                                   {place.roadAddress || place.address}
                                 </p>
                               </div>
-                              {place.naverPlaceUrl && (
+                              {place.placeUrl && (
                                 <a
-                                  href={place.naverPlaceUrl}
+                                  href={place.placeUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={(e) => e.stopPropagation()}
@@ -423,35 +364,6 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
                   </div>
                 </>
               )}
-
-              {/* 사진 업로드 */}
-              <div className="space-y-2">
-                <Label>사진 업로드</Label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleFileChange}
-                  className="hidden"
-                  data-testid="input-file-upload"
-                />
-                <div
-                  className="border-2 border-dashed border-border rounded-lg p-8 text-center hover-elevate cursor-pointer"
-                  onClick={() => fileInputRef.current?.click()}
-                  data-testid="upload-area"
-                >
-                  <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  {selectedFiles.length > 0 ? (
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{selectedFiles.length}장 선택됨 ✓</p>
-                      <p className="text-xs text-muted-foreground mt-1">{selectedFiles.map(f => f.name).join(", ")}</p>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">클릭하여 사진 업로드 (+500P)</p>
-                  )}
-                </div>
-              </div>
 
               <div className="space-y-2">
                 <Label>별점 *</Label>

@@ -37,16 +37,14 @@ export default function InviteFriendDialog({ open, onOpenChange }: InviteFriendD
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (response.ok) {
-        const data = await response.json();
-        if (data.inviteCode) {
-          setInviteCode(data.inviteCode);
-          return;
+        const body = await response.json();
+        if (body.data?.inviteCode) {
+          setInviteCode(body.data.inviteCode);
         }
       }
-    } catch {}
-    // fallback
-    setInviteCode(Math.random().toString(36).substring(2, 8).toUpperCase());
-    setIsLoading(false);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const inviteUrl = `${window.location.origin}/invite/${inviteCode}`;

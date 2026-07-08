@@ -13,6 +13,7 @@ import OnboardingLicense from "@/pages/OnboardingLicense";
 import LicenseProgress from "@/pages/LicenseProgress";
 import AddRestaurantDialog from "@/components/AddRestaurantDialog";
 import LoginPage from "@/pages/LoginPage";
+import KakaoCallbackPage from "@/pages/KakaoCallbackPage";
 import SetNicknamePage from "@/pages/SetNicknamePage";
 import RestaurantDetailPage from "@/pages/RestaurantDetailPage";
 import SearchPage from "@/pages/SearchPage";
@@ -101,6 +102,9 @@ function Router() {
       <Switch>
         <Route path="/login">
           {() => <LoginPage onNavigate={handleNavigation} />}
+        </Route>
+        <Route path="/kakao/callback">
+          {() => <KakaoCallbackPage onNavigate={handleNavigation} />}
         </Route>
         <Route path="/set-nickname">
           {() => <SetNicknamePage onNavigate={handleNavigation} />}

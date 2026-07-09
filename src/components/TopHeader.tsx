@@ -1,14 +1,14 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Users, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NakNakLogo } from "@/components/NakNakLogo";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
+import FriendsManagementDialog from "@/components/FriendsManagementDialog";
 
 interface TopHeaderProps {
   onInviteFriendClick?: () => void;
-  onFriendsClick?: () => void;
-  friendsCount?: number;
   className?: string;
   // legacy props (unused, kept for compat)
   location?: string;
@@ -17,16 +17,16 @@ interface TopHeaderProps {
   onNotificationClick?: () => void;
   onSearch?: () => void;
   onSearchClick?: () => void;
+  onFriendsClick?: () => void;
+  friendsCount?: number;
 }
 
 export default function TopHeader({
-  onInviteFriendClick,
-  onFriendsClick,
-  friendsCount = 0,
   notificationCount = 0,
   className,
 }: TopHeaderProps) {
   const [, setLocation] = useLocation();
+  const [showFriends, setShowFriends] = useState(false);
 
   return (
     <header
@@ -62,29 +62,20 @@ export default function TopHeader({
             )}
           </Button>
 
-          {onFriendsClick && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onFriendsClick}
-              className="gap-1.5 text-muted-foreground hover:text-foreground"
-              data-testid="button-friends"
-            >
-              <Users className="w-4 h-4" />
-              <span className="text-sm">친구</span>
-              {friendsCount > 0 && (
-                <Badge
-                  variant="default"
-                  className="px-1.5 py-0 h-4 text-xs min-w-[16px]"
-                  data-testid="badge-friends-count"
-                >
-                  {friendsCount}
-                </Badge>
-              )}
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowFriends(true)}
+            className="gap-1.5 text-muted-foreground hover:text-foreground"
+            data-testid="button-friends"
+          >
+            <Users className="w-4 h-4" />
+            <span className="text-sm">친구</span>
+          </Button>
         </div>
       </div>
+
+      <FriendsManagementDialog open={showFriends} onOpenChange={setShowFriends} />
     </header>
   );
 }

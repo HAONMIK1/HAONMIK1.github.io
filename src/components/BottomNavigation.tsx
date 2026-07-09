@@ -1,4 +1,4 @@
-import { Home, TrendingUp, Plus, User } from "lucide-react";
+import { Home, Plus, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 
@@ -17,13 +17,11 @@ interface BottomNavigationProps {
 const NAV_ITEMS: NavItem[] = [
   { id: "home", label: "홈", icon: <Home className="w-5 h-5" />, path: "/" },
   { id: "add", label: "등록", icon: <Plus className="w-6 h-6" strokeWidth={2.5} />, path: "" },
-  { id: "rankings", label: "랭킹", icon: <TrendingUp className="w-5 h-5" />, path: "/rankings" },
   { id: "profile", label: "프로필", icon: <User className="w-5 h-5" />, path: "/profile" },
 ];
 
 function getActiveId(pathname: string): string {
   if (pathname === "/" || pathname.startsWith("/restaurant") || pathname.startsWith("/review")) return "home";
-  if (pathname.startsWith("/rankings")) return "rankings";
   if (pathname.startsWith("/profile")) return "profile";
   if (pathname.startsWith("/points")) return "profile";
   if (pathname.startsWith("/saved")) return "profile";

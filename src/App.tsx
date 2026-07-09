@@ -6,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useState, useEffect } from "react";
 import NotFound from "@/pages/not-found";
 import DiscoveryFeed from "@/pages/DiscoveryFeed";
-import RankingsPage from "@/pages/RankingsPage";
 import UserProfilePage from "@/pages/UserProfilePage";
 import PointsPage from "@/pages/PointsPage";
 import OnboardingLicense from "@/pages/OnboardingLicense";
@@ -62,9 +61,6 @@ function Router() {
     switch (id) {
       case "home":
         setLocation("/");
-        break;
-      case "rankings":
-        setLocation("/rankings");
         break;
       case "add":
         setShowAddDialog(true);
@@ -145,13 +141,6 @@ function Router() {
           {() => (
             <ProtectedRoute>
               <LicenseProgress onNavigate={handleNavigation} />
-            </ProtectedRoute>
-          )}
-        </Route>
-        <Route path="/rankings">
-          {() => (
-            <ProtectedRoute>
-              <RankingsPage onNavigate={handleNavigation} />
             </ProtectedRoute>
           )}
         </Route>

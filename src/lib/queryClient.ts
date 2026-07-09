@@ -68,6 +68,9 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
     const newToken = await refreshAccessToken();
     if (newToken) {
       res = await doFetch(newToken);
+    } else if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+      // 리프레시도 실패 = 완전히 로그아웃된 상태. 조용히 계속 실패하는 대신 로그인 화면으로 보낸다.
+      window.location.href = "/login";
     }
   }
 

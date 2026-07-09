@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
   Dialog,
@@ -30,6 +31,7 @@ interface AddRestaurantDialogProps {
 
 export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAdded }: AddRestaurantDialogProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [rating, setRating] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState("");
   const [formData, setFormData] = useState({
@@ -158,6 +160,8 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
         imageUrls: [],
       });
       const reviewBody = await reviewRes.json();
+
+      queryClient.invalidateQueries({ queryKey: ["user", "me", "reviews"] });
 
       if (onRestaurantAdded) {
         onRestaurantAdded({ ...savedRestaurant, review: reviewBody.data });

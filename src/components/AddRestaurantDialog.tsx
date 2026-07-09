@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import StarRating from "./StarRating";
 import CategoryBadge from "./CategoryBadge";
-import { MapPin, Search } from "lucide-react";
+import { MapPin, Search, ImagePlus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 declare global {
@@ -49,8 +49,26 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
     latitude?: number;
     longitude?: number;
   }>({});
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const categories = ["한식", "일식", "중식", "양식", "분식", "치킨", "카페", "기타"];
+
+  const photoPreviews = selectedFiles.map((file) => URL.createObjectURL(file));
+  useEffect(() => {
+    return () => photoPreviews.forEach((url) => URL.revokeObjectURL(url));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFiles]);
+
+  const handleFilesSelected = (files: FileList | null) => {
+    if (!files) return;
+    setSelectedFiles((prev) => [...prev, ...Array.from(files)]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -119,6 +137,7 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
     setSearchResults([]);
     setSearchMode("search");
     setSelectedPlace({});
+    setSelectedFiles([]);
     setFormData({ name: "", address: "", recommendedMenu: "", review: "", hashtag: "" });
   };
 
@@ -399,6 +418,47 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
                 />
                 <p className="text-xs text-muted-foreground">
                   상세한 후기를 작성하면 더 많은 포인트를 받을 수 있어요!
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>사진</Label>
+                <div className="flex flex-wrap gap-2">
+                  {photoPreviews.map((url, idx) => (
+                    <div key={idx} className="relative w-20 h-20 rounded-lg overflow-hidden group" data-testid={`photo-preview-${idx}`}>
+                      <img src={url} alt={`선택한 사진 ${idx + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(idx)}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center"
+                        data-testid={`button-remove-photo-${idx}`}
+                        aria-label="사진 제거"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-20 h-20 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 text-muted-foreground hover-elevate"
+                    data-testid="button-add-photo"
+                  >
+                    <ImagePlus className="w-5 h-5" />
+                    <span className="text-[11px]">사진 추가</span>
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleFilesSelected(e.target.files)}
+                    data-testid="input-photo-file"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  사진 업로드는 준비 중이에요. 지금 선택한 사진은 후기에는 아직 첨부되지 않아요.
                 </p>
               </div>
 

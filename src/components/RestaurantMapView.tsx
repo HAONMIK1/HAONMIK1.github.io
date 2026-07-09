@@ -7,7 +7,8 @@ import StarRating from "@/components/StarRating";
 import { MapPin, Star, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const KAKAO_MAP_KEY = import.meta.env.VITE_KAKAO_MAP_KEY;
+// 카카오 지도 SDK는 로그인과 같은 JavaScript 키를 사용한다 (별도 지도 키가 있으면 우선)
+const KAKAO_MAP_KEY = import.meta.env.VITE_KAKAO_MAP_KEY || import.meta.env.VITE_KAKAO_JS_KEY;
 
 declare global {
   interface Window {
@@ -56,7 +57,7 @@ export default function RestaurantMapView({
       return;
     }
     const script = document.createElement("script");
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_KEY}&autoload=false&libraries=services`;
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_MAP_KEY}&autoload=false&libraries=services`;
     script.async = true;
     script.onload = () => window.kakao.maps.load(() => setMapReady(true));
     script.onerror = () => setSdkFailed(true);
@@ -97,7 +98,7 @@ export default function RestaurantMapView({
       <div className={cn("space-y-3", className)}>
         <Card className="p-3 bg-accent/40 text-xs text-muted-foreground flex items-center gap-2">
           <MapPin className="w-4 h-4" />
-          지도 키(VITE_KAKAO_MAP_KEY) 미설정 — 목록 보기로 표시합니다
+          지도를 불러오지 못했어요 — 목록으로 표시합니다 (카카오 개발자센터에서 카카오맵 활성화 필요)
         </Card>
         {places.map((p) => (
           <Card

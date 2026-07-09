@@ -17,7 +17,6 @@ import KakaoCallbackPage from "@/pages/KakaoCallbackPage";
 import SetNicknamePage from "@/pages/SetNicknamePage";
 import RestaurantDetailPage from "@/pages/RestaurantDetailPage";
 import OnboardingFriends from "@/pages/OnboardingFriends";
-import MapPage from "@/pages/MapPage";
 import SavedRestaurantsPage from "@/pages/SavedRestaurantsPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 
@@ -70,9 +69,6 @@ function Router() {
       case "add":
         setShowAddDialog(true);
         break;
-      case "map":
-        setLocation("/map");
-        break;
       case "saved":
         setLocation("/saved");
         break;
@@ -111,13 +107,6 @@ function Router() {
           {() => (
             <ProtectedRoute>
               <DiscoveryFeed onNavigate={handleNavigation} />
-            </ProtectedRoute>
-          )}
-        </Route>
-        <Route path="/map">
-          {() => (
-            <ProtectedRoute>
-              <MapPage onNavigate={handleNavigation} />
             </ProtectedRoute>
           )}
         </Route>

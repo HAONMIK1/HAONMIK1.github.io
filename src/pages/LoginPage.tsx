@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { NakNakLogo } from "@/components/NakNakLogo";
 import { useToast } from "@/hooks/use-toast";
+import { Lock, Users, UtensilsCrossed } from "lucide-react";
 
 declare global {
   interface Window {
@@ -76,13 +77,40 @@ export default function LoginPage({ onNavigate, inviteCode: propInviteCode }: Lo
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center space-y-4">
-          <div className="flex justify-center">
-            <NakNakLogo size={80} />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4 py-10">
+      <div className="w-full max-w-md text-center mb-6">
+        <div className="flex justify-center mb-3">
+          <NakNakLogo size={72} />
+        </div>
+        <h1 className="text-3xl font-bold text-foreground mb-2">낙낙</h1>
+        <p className="text-base text-muted-foreground">
+          모르는 사람 말고, 아는 사람이 인정한 맛집
+        </p>
+      </div>
+
+      <div className="w-full max-w-md grid grid-cols-3 gap-2 mb-6">
+        <div className="flex flex-col items-center gap-1.5 text-center">
+          <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
+            <Lock className="w-5 h-5 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground">낙낙</h1>
+          <span className="text-xs text-muted-foreground leading-tight">초대받은<br />사람만 가입</span>
+        </div>
+        <div className="flex flex-col items-center gap-1.5 text-center">
+          <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
+            <Users className="w-5 h-5 text-primary" />
+          </div>
+          <span className="text-xs text-muted-foreground leading-tight">1촌·2촌·3촌<br />지인 네트워크</span>
+        </div>
+        <div className="flex flex-col items-center gap-1.5 text-center">
+          <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
+            <UtensilsCrossed className="w-5 h-5 text-primary" />
+          </div>
+          <span className="text-xs text-muted-foreground leading-tight">직접 가본<br />진짜 후기</span>
+        </div>
+      </div>
+
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center space-y-3">
           <CardDescription className="text-base">
             친구들과 함께 맛집을 발견하고 공유하세요
           </CardDescription>

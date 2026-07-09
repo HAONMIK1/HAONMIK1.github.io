@@ -98,8 +98,8 @@ export default function SetNicknamePage({ onNavigate }: SetNicknamePageProps) {
         description: `${trimmedNickname}님, 낙낙에 오신 것을 환영합니다.`,
       });
       
-      // 가입 직후 친구 연결 온보딩으로 이동 (초대자와 1촌 연결된 상태)
-      setLocation("/onboarding/friends");
+      // 가입 직후: 앱 소개 → 맛집 등록(필수) → 친구 연결(선택) 순서로 온보딩
+      setLocation("/onboarding/intro");
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.";
       toast({

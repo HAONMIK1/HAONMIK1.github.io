@@ -16,6 +16,8 @@ import KakaoCallbackPage from "@/pages/KakaoCallbackPage";
 import SetNicknamePage from "@/pages/SetNicknamePage";
 import RestaurantDetailPage from "@/pages/RestaurantDetailPage";
 import OnboardingFriends from "@/pages/OnboardingFriends";
+import OnboardingIntro from "@/pages/OnboardingIntro";
+import OnboardingRegister from "@/pages/OnboardingRegister";
 import SavedRestaurantsPage from "@/pages/SavedRestaurantsPage";
 import NotificationsPage from "@/pages/NotificationsPage";
 
@@ -95,6 +97,12 @@ function Router() {
         </Route>
         <Route path="/set-nickname">
           {() => <SetNicknamePage onNavigate={handleNavigation} />}
+        </Route>
+        <Route path="/onboarding/intro">
+          {() => <OnboardingIntro />}
+        </Route>
+        <Route path="/onboarding/register">
+          {() => <OnboardingRegister />}
         </Route>
         <Route path="/onboarding/friends">
           {() => <OnboardingFriends />}

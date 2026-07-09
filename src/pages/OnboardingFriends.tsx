@@ -97,10 +97,10 @@ export default function OnboardingFriends() {
             </span>
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">
-            벌써 지인들의 맛집을<br />볼 수 있어요 🎉
+            친구를 초대해보세요<br />(선택 사항이에요)
           </h1>
           <p className="text-sm text-muted-foreground">
-            친구를 더 팔로우하면 3촌까지의 맛집이 더 풍성해져요
+            친구를 3명 이상 초대하면 1촌부터 3촌까지의 맛집이 더 풍성해져요
           </p>
         </div>
       </div>

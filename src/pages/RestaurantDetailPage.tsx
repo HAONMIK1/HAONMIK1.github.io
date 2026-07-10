@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, MapPin, Star, ExternalLink, Heart, Trash2, UtensilsCrossed } from "lucide-react";
+import { ArrowLeft, MapPin, Star, ExternalLink, Heart, Pencil, Trash2, UtensilsCrossed } from "lucide-react";
 import TopHeader from "@/components/TopHeader";
 import BottomNavigation from "@/components/BottomNavigation";
 import InviteFriendDialog from "@/components/InviteFriendDialog";
+import EditReviewDialog from "@/components/EditReviewDialog";
 import { Button } from "@/components/ui/button";
 import { useSavedRestaurants } from "@/hooks/useSavedRestaurants";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,6 +39,7 @@ interface ReviewItem {
 
 export default function RestaurantDetailPage({ onNavigate, restaurantId }: RestaurantDetailPageProps) {
   const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [editingReview, setEditingReview] = useState<ReviewItem | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -230,14 +232,24 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId }: Resta
                             </div>
                           </div>
                           {myId === review.userId && (
-                            <button
-                              onClick={() => handleDeleteReview(review.id)}
-                              className="text-muted-foreground hover:text-destructive flex-shrink-0"
-                              data-testid={`button-delete-review-${review.id}`}
-                              aria-label="후기 삭제"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <button
+                                onClick={() => setEditingReview(review)}
+                                className="text-muted-foreground hover:text-foreground"
+                                data-testid={`button-edit-review-${review.id}`}
+                                aria-label="후기 수정"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteReview(review.id)}
+                                className="text-muted-foreground hover:text-destructive"
+                                data-testid={`button-delete-review-${review.id}`}
+                                aria-label="후기 삭제"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           )}
                         </div>
 
@@ -264,6 +276,22 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId }: Resta
       </div>
 
       <InviteFriendDialog open={showInviteDialog} onOpenChange={setShowInviteDialog} />
+
+      {editingReview && (
+        <EditReviewDialog
+          open={!!editingReview}
+          onOpenChange={(open) => !open && setEditingReview(null)}
+          reviewId={editingReview.id}
+          initialContent={editingReview.content}
+          initialRating={editingReview.rating}
+          initialImageUrls={editingReview.imageUrls}
+          onUpdated={() => {
+            queryClient.invalidateQueries({ queryKey: ["restaurant", restaurantId, "reviews"] });
+            queryClient.invalidateQueries({ queryKey: ["user", "me", "reviews"] });
+          }}
+        />
+      )}
+
       <BottomNavigation onNavigate={onNavigate} />
     </div>
   );

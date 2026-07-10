@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { parseReviewContent } from "@/lib/reviewContent";
 
 interface RestaurantDetailPageProps {
   onNavigate?: (id: string) => void;
@@ -203,73 +204,98 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId }: Resta
               <p className="text-sm">아직 작성된 후기가 없어요</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {reviews.map((review) => (
-                <Card key={review.id} className="border-none shadow-none bg-transparent" data-testid={`review-card-${review.id}`}>
-                  <CardContent className="p-0">
-                    <div className="flex items-start gap-3">
-                      <Avatar className="w-9 h-9 flex-shrink-0">
-                        <AvatarFallback className="text-xs font-bold bg-muted">
-                          {review.nickname[0]}
-                        </AvatarFallback>
-                      </Avatar>
+            <div className="space-y-3">
+              {reviews.map((review) => {
+                const { recommendedMenu, review: reviewText, hashtag } = parseReviewContent(review.content);
+                return (
+                  <Card key={review.id} data-testid={`review-card-${review.id}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <Avatar className="w-9 h-9 flex-shrink-0">
+                          <AvatarFallback className="text-xs font-bold bg-muted">
+                            {review.nickname[0]}
+                          </AvatarFallback>
+                        </Avatar>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm text-foreground">{review.nickname}</span>
-                            <div className="flex gap-0.5">
-                              {Array.from({ length: 5 }).map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`w-3 h-3 ${
-                                    i < review.rating
-                                      ? "fill-yellow-400 text-yellow-400"
-                                      : "text-muted-foreground/30"
-                                  }`}
-                                />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm text-foreground">{review.nickname}</span>
+                              <div className="flex gap-0.5">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <Star
+                                    key={i}
+                                    className={`w-3 h-3 ${
+                                      i < review.rating
+                                        ? "fill-yellow-400 text-yellow-400"
+                                        : "text-muted-foreground/30"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            {myId === review.userId && (
+                              <div className="flex items-center gap-1 flex-shrink-0 -mr-1.5">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="w-7 h-7 text-muted-foreground hover:text-foreground"
+                                  onClick={() => setEditingReview(review)}
+                                  data-testid={`button-edit-review-${review.id}`}
+                                  aria-label="후기 수정"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="w-7 h-7 text-muted-foreground hover:text-destructive"
+                                  onClick={() => handleDeleteReview(review.id)}
+                                  data-testid={`button-delete-review-${review.id}`}
+                                  aria-label="후기 삭제"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+
+                          {review.imageUrls.length > 0 && (
+                            <div className="flex gap-1.5 mt-2 overflow-x-auto">
+                              {review.imageUrls.map((url, i) => (
+                                <div key={url} className="w-24 h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                                  <img
+                                    src={url}
+                                    alt={`${review.nickname}님의 후기 사진 ${i + 1}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
                               ))}
                             </div>
-                          </div>
-                          {myId === review.userId && (
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <button
-                                onClick={() => setEditingReview(review)}
-                                className="text-muted-foreground hover:text-foreground"
-                                data-testid={`button-edit-review-${review.id}`}
-                                aria-label="후기 수정"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteReview(review.id)}
-                                className="text-muted-foreground hover:text-destructive"
-                                data-testid={`button-delete-review-${review.id}`}
-                                aria-label="후기 삭제"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
                           )}
-                        </div>
 
-                        {review.imageUrls[0] && (
-                          <div className="w-full aspect-video rounded-lg overflow-hidden mt-2 mb-2 bg-muted">
-                            <img
-                              src={review.imageUrls[0]}
-                              alt={`${review.nickname}님의 후기 사진`}
-                              className="w-full h-full object-cover"
-                            />
+                          {recommendedMenu && (
+                            <p className="text-xs text-primary font-medium mt-2">👍 추천 메뉴: {recommendedMenu}</p>
+                          )}
+
+                          <p className="text-sm text-foreground leading-relaxed mt-1.5 whitespace-pre-wrap">
+                            {reviewText}
+                          </p>
+
+                          <div className="flex items-center justify-between mt-2">
+                            {hashtag ? (
+                              <Badge variant="secondary" className="font-normal">#{hashtag}</Badge>
+                            ) : (
+                              <span />
+                            )}
+                            <p className="text-xs text-muted-foreground">{formatDate(review.createdAt)}</p>
                           </div>
-                        )}
-
-                        <p className="text-sm text-foreground leading-relaxed mt-1">{review.content}</p>
-                        <p className="text-xs text-muted-foreground mt-1.5">{formatDate(review.createdAt)}</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>

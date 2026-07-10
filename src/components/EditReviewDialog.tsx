@@ -7,12 +7,15 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import StarRating from "./StarRating";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { ImagePlus, X } from "lucide-react";
+import { formatReviewContent, parseReviewContent, SUGGESTED_HASHTAGS } from "@/lib/reviewContent";
 
 interface EditReviewDialogProps {
   open: boolean;
@@ -34,8 +37,10 @@ export default function EditReviewDialog({
   onUpdated,
 }: EditReviewDialogProps) {
   const { toast } = useToast();
-  const [content, setContent] = useState(initialContent);
   const [rating, setRating] = useState(initialRating);
+  const [recommendedMenu, setRecommendedMenu] = useState("");
+  const [review, setReview] = useState("");
+  const [hashtag, setHashtag] = useState("");
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>(initialImageUrls);
   const [newFiles, setNewFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,7 +48,10 @@ export default function EditReviewDialog({
 
   useEffect(() => {
     if (open) {
-      setContent(initialContent);
+      const parsed = parseReviewContent(initialContent);
+      setRecommendedMenu(parsed.recommendedMenu);
+      setReview(parsed.review);
+      setHashtag(parsed.hashtag);
       setRating(initialRating);
       setExistingImageUrls(initialImageUrls);
       setNewFiles([]);
@@ -76,7 +84,7 @@ export default function EditReviewDialog({
       toast({ title: "별점을 선택해주세요", variant: "destructive" });
       return;
     }
-    if (!content.trim()) {
+    if (!review.trim()) {
       toast({ title: "후기를 입력해주세요", variant: "destructive" });
       return;
     }
@@ -93,7 +101,7 @@ export default function EditReviewDialog({
       }
 
       await apiRequest("PATCH", `/api/v1/reviews/${reviewId}`, {
-        content: content.trim(),
+        content: formatReviewContent({ recommendedMenu, review, hashtag }),
         rating,
         imageUrls: [...existingImageUrls, ...uploadedUrls],
       });
@@ -113,29 +121,44 @@ export default function EditReviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" data-testid="dialog-edit-review">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" data-testid="dialog-edit-review">
         <DialogHeader>
           <DialogTitle>후기 수정</DialogTitle>
-          <DialogDescription>별점, 후기 내용, 사진을 수정할 수 있어요</DialogDescription>
+          <DialogDescription>내용을 수정하고 저장해주세요</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-5 py-2">
           <div className="space-y-2">
-            <Label>별점</Label>
+            <Label>별점 *</Label>
             <StarRating rating={rating} size="lg" interactive onRatingChange={setRating} />
           </div>
 
+          <div className="h-px bg-border" />
+
           <div className="space-y-2">
-            <Label htmlFor="edit-review-content">후기 내용</Label>
+            <Label htmlFor="edit-menu">추천 메뉴</Label>
+            <Input
+              id="edit-menu"
+              placeholder="예: 가라아게 우동, LA갈비"
+              value={recommendedMenu}
+              onChange={(e) => setRecommendedMenu(e.target.value)}
+              data-testid="input-edit-menu"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-review-content">후기 내용 *</Label>
             <Textarea
               id="edit-review-content"
               rows={5}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
+              value={review}
+              onChange={(e) => setReview(e.target.value)}
               className="resize-none"
               data-testid="textarea-edit-review"
             />
           </div>
+
+          <div className="h-px bg-border" />
 
           <div className="space-y-2">
             <Label>사진</Label>
@@ -183,6 +206,26 @@ export default function EditReviewDialog({
                 className="hidden"
                 onChange={(e) => handleFilesSelected(e.target.files)}
               />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-hashtag">해시태그</Label>
+            <Input
+              id="edit-hashtag"
+              placeholder="예: 데이트맛집"
+              value={hashtag}
+              onChange={(e) => setHashtag(e.target.value)}
+              data-testid="input-edit-hashtag"
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {SUGGESTED_HASHTAGS.map((tag) => (
+                <button type="button" key={tag} onClick={() => setHashtag(tag)} data-testid={`edit-hashtag-suggestion-${tag}`}>
+                  <Badge variant={hashtag === tag ? "default" : "outline"} className="cursor-pointer font-normal">
+                    #{tag}
+                  </Badge>
+                </button>
+              ))}
             </div>
           </div>
 

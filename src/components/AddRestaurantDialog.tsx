@@ -16,6 +16,8 @@ import StarRating from "./StarRating";
 import CategoryBadge from "./CategoryBadge";
 import { MapPin, Search, ImagePlus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { formatReviewContent, SUGGESTED_HASHTAGS } from "@/lib/reviewContent";
+import { Badge } from "@/components/ui/badge";
 
 declare global {
   interface Window {
@@ -160,12 +162,12 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
       longitude: selectedPlace.longitude,
     };
 
-    // 백엔드에 없는 추천메뉴/해시태그는 후기 본문에 합쳐서 사용자 입력이 사라지지 않게 한다
-    const contentParts = [];
-    if (formData.recommendedMenu.trim()) contentParts.push(`[추천메뉴: ${formData.recommendedMenu.trim()}]`);
-    contentParts.push(formData.review.trim());
-    if (formData.hashtag.trim()) contentParts.push(`#${formData.hashtag.trim()}`);
-    const content = contentParts.join("\n");
+    // 백엔드에 없는 추천메뉴/해시태그는 정해진 형식으로 후기 본문에 합쳐서 저장한다
+    const content = formatReviewContent({
+      recommendedMenu: formData.recommendedMenu,
+      review: formData.review,
+      hashtag: formData.hashtag,
+    });
 
     setIsSubmitting(true);
     try {
@@ -472,11 +474,28 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
                 <Label htmlFor="hashtag">해시태그</Label>
                 <Input
                   id="hashtag"
-                  placeholder="예: 데이트맛집, 가성비최고"
+                  placeholder="예: 데이트맛집"
                   value={formData.hashtag}
                   onChange={(e) => setFormData({ ...formData, hashtag: e.target.value })}
                   data-testid="input-hashtag"
                 />
+                <div className="flex flex-wrap gap-1.5">
+                  {SUGGESTED_HASHTAGS.map((tag) => (
+                    <button
+                      type="button"
+                      key={tag}
+                      onClick={() => setFormData({ ...formData, hashtag: tag })}
+                      data-testid={`hashtag-suggestion-${tag}`}
+                    >
+                      <Badge
+                        variant={formData.hashtag === tag ? "default" : "outline"}
+                        className="cursor-pointer font-normal"
+                      >
+                        #{tag}
+                      </Badge>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* 등록 버튼 */}

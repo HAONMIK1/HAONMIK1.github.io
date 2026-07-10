@@ -169,6 +169,15 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
 
     setIsSubmitting(true);
     try {
+      let imageUrls: string[] = [];
+      if (selectedFiles.length > 0) {
+        const form = new FormData();
+        selectedFiles.forEach((file) => form.append("files", file));
+        const uploadRes = await apiRequest("POST", "/api/v1/uploads/images", form);
+        const uploadBody = await uploadRes.json();
+        imageUrls = uploadBody.data ?? [];
+      }
+
       const restaurantRes = await apiRequest("POST", "/api/v1/restaurants", restaurantPayload);
       const restaurantBody = await restaurantRes.json();
       const savedRestaurant = restaurantBody.data;
@@ -176,7 +185,7 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
       const reviewRes = await apiRequest("POST", `/api/v1/restaurants/${savedRestaurant.id}/reviews`, {
         content,
         rating,
-        imageUrls: [],
+        imageUrls,
       });
       const reviewBody = await reviewRes.json();
 
@@ -457,9 +466,6 @@ export default function AddRestaurantDialog({ open, onOpenChange, onRestaurantAd
                     data-testid="input-photo-file"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  사진 업로드는 준비 중이에요. 지금 선택한 사진은 후기에는 아직 첨부되지 않아요.
-                </p>
               </div>
 
               <div className="space-y-2">

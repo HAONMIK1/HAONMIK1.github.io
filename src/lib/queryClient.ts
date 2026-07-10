@@ -83,12 +83,14 @@ export async function apiRequest(
   data?: unknown,
 ): Promise<Response> {
   const fullUrl = getFullUrl(url);
-  const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+  const isFormData = data instanceof FormData;
+  // FormData는 Content-Type을 직접 넣으면 boundary가 빠져 깨지므로 브라우저가 자동으로 설정하게 둔다
+  const headers: Record<string, string> = data && !isFormData ? { "Content-Type": "application/json" } : {};
 
   const res = await fetchWithAuth(fullUrl, {
     method,
     headers,
-    body: data ? JSON.stringify(data) : undefined,
+    body: isFormData ? (data as FormData) : data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
 

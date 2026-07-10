@@ -1,6 +1,5 @@
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { NakNakLogo } from "@/components/NakNakLogo";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, Users, UtensilsCrossed } from "lucide-react";
@@ -25,6 +24,24 @@ interface LoginPageProps {
   onNavigate?: (page: string) => void;
   inviteCode?: string;
 }
+
+const FEATURES = [
+  {
+    icon: Lock,
+    title: "초대받은 사람만 가입",
+    description: "아무나 들어올 수 없는 폐쇄형 커뮤니티예요",
+  },
+  {
+    icon: Users,
+    title: "1촌·2촌·3촌 지인 네트워크",
+    description: "가까운 사람부터 지인의 지인까지 연결돼요",
+  },
+  {
+    icon: UtensilsCrossed,
+    title: "직접 가본 사람의 진짜 후기",
+    description: "광고 없이, 아는 사람의 경험만 모아요",
+  },
+];
 
 export default function LoginPage({ onNavigate, inviteCode: propInviteCode }: LoginPageProps) {
   const { toast } = useToast();
@@ -77,59 +94,56 @@ export default function LoginPage({ onNavigate, inviteCode: propInviteCode }: Lo
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4 py-10">
-      <div className="w-full max-w-md text-center mb-6">
-        <div className="flex justify-center mb-3">
-          <NakNakLogo size={72} />
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* 상단 히어로 */}
+      <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-b from-primary/15 via-primary/5 to-background px-6 pt-16 pb-10 text-center">
+        <div className="w-16 h-16 rounded-3xl overflow-hidden shadow-lg shadow-primary/20 mb-5">
+          <NakNakLogo size={64} />
         </div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">낙낙</h1>
-        <p className="text-base text-muted-foreground">
-          모르는 사람 말고, 아는 사람이 인정한 맛집
+        <h1 className="text-[28px] leading-snug font-extrabold text-foreground mb-2 tracking-tight">
+          모르는 사람 말고,<br />아는 사람이 인정한 맛집
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          지인 초대로만 시작하는 프라이빗 맛집 커뮤니티
         </p>
-      </div>
 
-      <div className="w-full max-w-md grid grid-cols-3 gap-2 mb-6">
-        <div className="flex flex-col items-center gap-1.5 text-center">
-          <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
-            <Lock className="w-5 h-5 text-primary" />
-          </div>
-          <span className="text-xs text-muted-foreground leading-tight">초대받은<br />사람만 가입</span>
-        </div>
-        <div className="flex flex-col items-center gap-1.5 text-center">
-          <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
-            <Users className="w-5 h-5 text-primary" />
-          </div>
-          <span className="text-xs text-muted-foreground leading-tight">1촌·2촌·3촌<br />지인 네트워크</span>
-        </div>
-        <div className="flex flex-col items-center gap-1.5 text-center">
-          <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
-            <UtensilsCrossed className="w-5 h-5 text-primary" />
-          </div>
-          <span className="text-xs text-muted-foreground leading-tight">직접 가본<br />진짜 후기</span>
+        <div className="w-full max-w-sm mt-10 space-y-3">
+          {FEATURES.map((f, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 bg-card/80 backdrop-blur-sm rounded-2xl p-3.5 text-left shadow-sm border border-border/50"
+              data-testid={`login-feature-${i}`}
+            >
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <f.icon className="w-5 h-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">{f.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{f.description}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center space-y-3">
-          <CardDescription className="text-base">
-            친구들과 함께 맛집을 발견하고 공유하세요
-          </CardDescription>
+      {/* 하단 로그인 영역 */}
+      <div className="bg-card rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-6 pt-7 pb-8">
+        <div className="max-w-sm mx-auto space-y-4">
           {inviteCode && (
-            <div className="bg-primary/10 rounded-lg px-4 py-2 text-sm text-primary font-medium">
+            <div className="bg-primary/10 rounded-xl px-4 py-2.5 text-sm text-primary font-medium text-center">
               🎉 초대 코드로 가입하면 보너스 포인트를 받아요!
             </div>
           )}
-        </CardHeader>
-        <CardContent className="space-y-6 p-6">
+
           <Button
             onClick={handleKakaoLogin}
-            className="w-full h-14 text-base font-semibold hover-elevate active-elevate-2"
+            className="w-full h-14 text-base font-semibold rounded-2xl hover-elevate active-elevate-2"
             style={{ backgroundColor: "#FEE500", color: "#000000" }}
             data-testid="button-kakao-login"
           >
             <svg
-              width="24"
-              height="24"
+              width="22"
+              height="22"
               viewBox="0 0 20 20"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -147,14 +161,14 @@ export default function LoginPage({ onNavigate, inviteCode: propInviteCode }: Lo
             <Button
               variant="outline"
               onClick={handleDevLogin}
-              className="w-full"
+              className="w-full rounded-2xl"
               data-testid="button-dev-login"
             >
               🛠 개발자 로그인 (백엔드 없이 화면 보기)
             </Button>
           )}
 
-          <p className="text-xs text-center text-muted-foreground px-4">
+          <p className="text-xs text-center text-muted-foreground px-2 leading-relaxed">
             계속 진행하면 낙낙의{" "}
             <span className="underline cursor-pointer hover:text-foreground transition-colors">
               서비스 약관
@@ -165,8 +179,8 @@ export default function LoginPage({ onNavigate, inviteCode: propInviteCode }: Lo
             </span>
             에 동의하는 것으로 간주됩니다.
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

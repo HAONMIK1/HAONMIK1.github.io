@@ -16,14 +16,30 @@ interface SetNicknamePageProps {
 export default function SetNicknamePage({ onNavigate }: SetNicknamePageProps) {
   const [, setLocation] = useLocation();
   const [nickname, setNickname] = useState("");
+  const [inviteCodeInput, setInviteCodeInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  // 카카오 로그인 시 초대 링크(state)로 넘어온 코드가 있으면 그걸 쓰고,
+  // 없으면(직접 로그인 등) 사용자가 직접 입력해야 가입할 수 있다.
+  const prefilledInviteCode = sessionStorage.getItem("inviteCode");
+  const needsInviteCodeInput = !prefilledInviteCode;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const trimmedNickname = nickname.trim();
-    
+    const inviteCode = prefilledInviteCode || inviteCodeInput.trim();
+
+    if (needsInviteCodeInput && !inviteCode) {
+      toast({
+        title: "초대코드를 입력해주세요",
+        description: "낙낙은 지인의 초대를 받아야만 가입할 수 있어요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!trimmedNickname) {
       toast({
         title: "닉네임을 입력해주세요",
@@ -43,9 +59,8 @@ export default function SetNicknamePage({ onNavigate }: SetNicknamePageProps) {
     setIsSubmitting(true);
 
     try {
-      // sessionStorage에서 카카오 Access Token과 초대코드 가져오기
+      // sessionStorage에서 카카오 Access Token 가져오기
       const kakaoAccessToken = sessionStorage.getItem("kakaoAccessToken");
-      const savedInviteCode = sessionStorage.getItem("inviteCode");
 
       if (!kakaoAccessToken) {
         toast({
@@ -66,7 +81,7 @@ export default function SetNicknamePage({ onNavigate }: SetNicknamePageProps) {
         body: JSON.stringify({
           kakaoAccessToken,
           nickname: trimmedNickname,
-          inviteCode: savedInviteCode || null,
+          inviteCode,
         }),
       });
 
@@ -121,11 +136,32 @@ export default function SetNicknamePage({ onNavigate }: SetNicknamePageProps) {
           </div>
           <CardTitle className="text-2xl font-bold">환영합니다!</CardTitle>
           <CardDescription className="text-base">
-            낙낙에서 사용할 닉네임을 설정해주세요
+            {needsInviteCodeInput
+              ? "낙낙은 지인의 초대가 있어야 가입할 수 있어요"
+              : "낙낙에서 사용할 닉네임을 설정해주세요"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {needsInviteCodeInput && (
+              <div className="space-y-2">
+                <Label htmlFor="inviteCode" className="text-base font-medium">
+                  초대코드
+                </Label>
+                <Input
+                  id="inviteCode"
+                  type="text"
+                  placeholder="지인에게 받은 초대코드를 입력해주세요"
+                  value={inviteCodeInput}
+                  onChange={(e) => setInviteCodeInput(e.target.value)}
+                  className="h-12 text-base"
+                  autoComplete="off"
+                  autoFocus
+                  data-testid="input-invite-code"
+                />
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="nickname" className="text-base font-medium">
                 닉네임
@@ -139,7 +175,7 @@ export default function SetNicknamePage({ onNavigate }: SetNicknamePageProps) {
                 maxLength={10}
                 className="h-12 text-base"
                 autoComplete="off"
-                autoFocus
+                autoFocus={!needsInviteCodeInput}
                 data-testid="input-nickname"
               />
               <p className="text-sm text-muted-foreground">

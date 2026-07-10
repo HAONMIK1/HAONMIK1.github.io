@@ -97,9 +97,10 @@ export default function LoginPage({ onNavigate, inviteCode: propInviteCode }: Lo
     <div className="min-h-screen flex flex-col bg-background">
       {/* 상단 히어로 */}
       <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-b from-primary/15 via-primary/5 to-background px-6 pt-16 pb-10 text-center">
-        <div className="w-16 h-16 rounded-3xl overflow-hidden shadow-lg shadow-primary/20 mb-5">
+        <div className="w-16 h-16 rounded-3xl overflow-hidden shadow-lg shadow-primary/20 mb-3">
           <NakNakLogo size={64} />
         </div>
+        <p className="text-sm font-bold text-primary tracking-tight mb-3">낙낙</p>
         <h1 className="text-[28px] leading-snug font-extrabold text-foreground mb-2 tracking-tight">
           모르는 사람 말고,<br />아는 사람이 인정한 맛집
         </h1>

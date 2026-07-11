@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import TopHeader from "@/components/TopHeader";
 import BottomNavigation from "@/components/BottomNavigation";
 import InviteFriendDialog from "@/components/InviteFriendDialog";
-import RestaurantMapView, { MapPlace } from "@/components/RestaurantMapView";
+import RestaurantMapView, { MapPlace, ReviewListItem } from "@/components/RestaurantMapView";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSavedRestaurants } from "@/hooks/useSavedRestaurants";
@@ -24,6 +24,7 @@ interface ReviewItem {
   id: number;
   restaurantId: number;
   restaurantName: string;
+  userId: number;
   nickname: string;
   content: string;
   rating: number;
@@ -70,6 +71,27 @@ export default function DiscoveryFeed({ onNavigate }: DiscoveryFeedProps = {}) {
     retry: false,
   });
   const reviews = reviewsData ?? [];
+
+  const { data: myId } = useQuery({
+    queryKey: ["user", "me", "id"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/v1/users/me");
+      const json = await res.json();
+      return json.data?.id as number;
+    },
+    retry: false,
+  });
+
+  const { data: followingIdsData } = useQuery({
+    queryKey: ["user", "me", "following"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/v1/users/me/following");
+      const json = await res.json();
+      return (json.data ?? []) as number[];
+    },
+    retry: false,
+  });
+  const followingIds = followingIdsData ?? [];
 
   // 지도 핀: 내가 후기 쓴 맛집 + 저장한 맛집 (상세 API에 좌표가 있다)
   const restaurantIds = Array.from(
@@ -119,6 +141,15 @@ export default function DiscoveryFeed({ onNavigate }: DiscoveryFeedProps = {}) {
   const noFilterSelected = networkFilters.length === 0;
   const visibleReviews = noFilterSelected ? [] : reviews;
   const visiblePlaces = noFilterSelected ? [] : mapPlaces;
+
+  const reviewItems: ReviewListItem[] = visibleReviews.map((r) => ({
+    reviewId: r.id,
+    restaurantId: String(r.restaurantId),
+    restaurantName: r.restaurantName,
+    userId: r.userId,
+    nickname: r.nickname,
+    rating: r.rating,
+  }));
 
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
@@ -194,7 +225,13 @@ export default function DiscoveryFeed({ onNavigate }: DiscoveryFeedProps = {}) {
         {/* 피드 본문 */}
         <section>
           {viewMode === "map" ? (
-            <RestaurantMapView places={visiblePlaces} heightClass="h-[55vh]" />
+            <RestaurantMapView
+              places={visiblePlaces}
+              reviewItems={reviewItems}
+              myUserId={myId}
+              followingIds={followingIds}
+              heightClass="h-[55vh]"
+            />
           ) : noFilterSelected ? (
             <div className="text-center py-16 text-muted-foreground">
               <p className="text-sm">필터를 선택하면 맛집이 보여요</p>

@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import StarRating from "@/components/StarRating";
 import { MapPin, Star, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 // 네이버 지도 SDK는 NCP(네이버 클라우드 플랫폼) 콘솔에서 별도로 발급받는 Client ID를 쓴다
 // (카카오 로그인 키, 서버의 네이버 검색 API 키와는 완전히 별개)
@@ -28,24 +30,71 @@ export interface MapPlace {
   naverPlaceUrl?: string;
 }
 
+export interface ReviewListItem {
+  reviewId: number;
+  restaurantId: string;
+  restaurantName: string;
+  userId: number;
+  nickname: string;
+  rating: number;
+}
+
 interface RestaurantMapViewProps {
   places: MapPlace[];
+  reviewItems?: ReviewListItem[];
+  myUserId?: number;
+  followingIds?: number[];
   heightClass?: string;
   className?: string;
 }
 
 export default function RestaurantMapView({
   places,
+  reviewItems,
+  myUserId,
+  followingIds,
   heightClass = "h-[60vh]",
   className,
 }: RestaurantMapViewProps) {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
   const [mapReady, setMapReady] = useState(false);
   const [sdkFailed, setSdkFailed] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [followingSet, setFollowingSet] = useState<Set<number>>(new Set(followingIds));
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+
+  useEffect(() => {
+    setFollowingSet(new Set(followingIds));
+  }, [followingIds]);
+
+  const handleToggleFollow = async (e: React.MouseEvent, targetUserId: number) => {
+    e.stopPropagation();
+    const isFollowing = followingSet.has(targetUserId);
+    setFollowingSet((prev) => {
+      const next = new Set(prev);
+      if (isFollowing) next.delete(targetUserId);
+      else next.add(targetUserId);
+      return next;
+    });
+    try {
+      await apiRequest(isFollowing ? "DELETE" : "POST", `/api/v1/users/${targetUserId}/follow`);
+    } catch (error) {
+      setFollowingSet((prev) => {
+        const next = new Set(prev);
+        if (isFollowing) next.add(targetUserId);
+        else next.delete(targetUserId);
+        return next;
+      });
+      toast({
+        title: "팔로우 처리에 실패했어요",
+        description: error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // 네이버 지도 SDK 동적 로드
   useEffect(() => {
@@ -187,27 +236,72 @@ export default function RestaurantMapView({
 
       {/* 목록 — 클릭하면 지도가 해당 위치로 이동 */}
       <div className={cn("flex-[2] min-w-0 overflow-y-auto space-y-2", heightClass)} data-testid="map-side-list">
-        {places.length === 0 && (
+        {reviewItems ? (
+          reviewItems.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-8 px-2">표시할 후기가 없어요</p>
+          ) : (
+            reviewItems.map((item) => {
+              const place = places.find((p) => p.restaurantId === item.restaurantId);
+              const isFollowing = followingSet.has(item.userId);
+              return (
+                <Card
+                  key={item.reviewId}
+                  className={cn(
+                    "p-2.5 cursor-pointer hover-elevate transition-colors",
+                    selectedId === item.restaurantId && "border-primary bg-primary/5"
+                  )}
+                  onClick={() => place && focusPlace(place)}
+                  data-testid={`map-side-list-item-${item.reviewId}`}
+                >
+                  <p className="text-xs font-semibold truncate">{item.restaurantName}</p>
+                  <div className="flex items-center justify-between gap-1 mt-1">
+                    <p className="text-[10px] text-muted-foreground truncate">{item.nickname}</p>
+                    {myUserId !== item.userId && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleToggleFollow(e, item.userId)}
+                        className="shrink-0"
+                        data-testid={`button-follow-${item.userId}`}
+                      >
+                        <Badge
+                          variant={isFollowing ? "default" : "outline"}
+                          className="text-[9px] font-normal cursor-pointer px-1.5 py-0"
+                        >
+                          {isFollowing ? "팔로잉" : "팔로우"}
+                        </Badge>
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                    <span className="text-[10px] font-medium">{item.rating}</span>
+                  </div>
+                </Card>
+              );
+            })
+          )
+        ) : places.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-8 px-2">표시할 맛집이 없어요</p>
+        ) : (
+          places.map((p) => (
+            <Card
+              key={p.restaurantId}
+              className={cn(
+                "p-2.5 cursor-pointer hover-elevate transition-colors",
+                selectedId === p.restaurantId && "border-primary bg-primary/5"
+              )}
+              onClick={() => focusPlace(p)}
+              data-testid={`map-side-list-item-${p.restaurantId}`}
+            >
+              <p className="text-xs font-semibold truncate">{p.name}</p>
+              {p.category && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{p.category}</p>}
+              <div className="flex items-center gap-1 mt-1">
+                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                <span className="text-[10px] font-medium">{(p.ratingAverage ?? 0).toFixed(1)}</span>
+              </div>
+            </Card>
+          ))
         )}
-        {places.map((p) => (
-          <Card
-            key={p.restaurantId}
-            className={cn(
-              "p-2.5 cursor-pointer hover-elevate transition-colors",
-              selectedId === p.restaurantId && "border-primary bg-primary/5"
-            )}
-            onClick={() => focusPlace(p)}
-            data-testid={`map-side-list-item-${p.restaurantId}`}
-          >
-            <p className="text-xs font-semibold truncate">{p.name}</p>
-            {p.category && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{p.category}</p>}
-            <div className="flex items-center gap-1 mt-1">
-              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-              <span className="text-[10px] font-medium">{(p.ratingAverage ?? 0).toFixed(1)}</span>
-            </div>
-          </Card>
-        ))}
       </div>
     </div>
   );

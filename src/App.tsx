@@ -160,9 +160,9 @@ function Router() {
           )}
         </Route>
         <Route path="/profile/:id">
-          {() => (
+          {(params) => (
             <ProtectedRoute>
-              <UserProfilePage onNavigate={handleNavigation} />
+              <UserProfilePage onNavigate={handleNavigation} userId={params.id} />
             </ProtectedRoute>
           )}
         </Route>

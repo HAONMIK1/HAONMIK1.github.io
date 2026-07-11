@@ -255,7 +255,16 @@ export default function RestaurantMapView({
                 >
                   <p className="text-xs font-semibold truncate">{item.restaurantName}</p>
                   <div className="flex items-center justify-between gap-1 mt-1">
-                    <p className="text-[10px] text-muted-foreground truncate">{item.nickname}</p>
+                    <p
+                      className="text-[10px] text-muted-foreground truncate hover:text-foreground hover:underline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLocation(`/profile/${item.userId}`);
+                      }}
+                      data-testid={`map-side-list-nickname-${item.userId}`}
+                    >
+                      {item.nickname}
+                    </p>
                     {myUserId !== item.userId && (
                       <button
                         type="button"

@@ -10,22 +10,33 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { useSavedRestaurants } from "@/hooks/useSavedRestaurants";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Settings, MapPin, Star, Heart, UserPlus, UtensilsCrossed
+  Settings, MapPin, Star, Heart, UserPlus, UserCheck, UtensilsCrossed
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface UserProfilePageProps {
   onNavigate?: (id: string) => void;
+  userId?: string;
 }
 
-interface UserInfo {
+interface MyInfo {
   id: number;
   email: string;
   nickname: string;
   inviteCode: string;
+  followerCount: number;
+  followingCount: number;
+}
+
+interface OtherUserInfo {
+  id: number;
+  email: string;
+  nickname: string;
+  followerCount: number;
+  followingCount: number;
+  isFollowing: boolean;
 }
 
 interface ReviewItem {
@@ -45,26 +56,41 @@ interface RestaurantItem {
   address: string;
 }
 
-export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {}) {
+export default function UserProfilePage({ onNavigate, userId }: UserProfilePageProps = {}) {
+  const isOwnProfile = !userId;
   const [activeTab, setActiveTab] = useState("reviews");
   const [, setLocation] = useLocation();
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const { savedIds: savedRestaurantIds } = useSavedRestaurants();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // 내 정보 조회
-  const { data: userInfo, isLoading: isLoadingUser, error: userError } = useQuery<UserInfo>({
+  const { data: myInfo, isLoading: isLoadingMy, error: myError } = useQuery<MyInfo>({
     queryKey: ["user", "me"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/v1/users/me");
       const json = await response.json();
-      return json.data as UserInfo;
+      return json.data as MyInfo;
     },
+    enabled: isOwnProfile,
   });
 
-  // 프로필 수정 mutation
+  const { data: otherInfo, isLoading: isLoadingOther, error: otherError } = useQuery<OtherUserInfo>({
+    queryKey: ["user", userId],
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/v1/users/${userId}`);
+      const json = await response.json();
+      return json.data as OtherUserInfo;
+    },
+    enabled: !isOwnProfile,
+  });
+
+  const isLoadingUser = isOwnProfile ? isLoadingMy : isLoadingOther;
+  const userError = isOwnProfile ? myError : otherError;
+  const displayName = (isOwnProfile ? myInfo?.nickname : otherInfo?.nickname) || "사용자";
+  const followerCount = (isOwnProfile ? myInfo?.followerCount : otherInfo?.followerCount) ?? 0;
+  const followingCount = (isOwnProfile ? myInfo?.followingCount : otherInfo?.followingCount) ?? 0;
+
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { nickname: string }) => {
       const response = await apiRequest("PATCH", "/api/v1/users/me", data);
@@ -72,17 +98,10 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user", "me"] });
-      toast({
-        title: "프로필이 수정되었습니다.",
-        description: "닉네임이 변경되었습니다.",
-      });
+      toast({ title: "프로필이 수정되었습니다.", description: "닉네임이 변경되었습니다." });
     },
     onError: (error: Error) => {
-      toast({
-        title: "프로필 수정 실패",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "프로필 수정 실패", description: error.message, variant: "destructive" });
     },
   });
 
@@ -90,42 +109,46 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
     updateProfileMutation.mutate({ nickname });
   };
 
-  const displayName = userInfo?.nickname || "사용자";
+  const handleToggleFollow = async () => {
+    if (!otherInfo) return;
+    try {
+      await apiRequest(otherInfo.isFollowing ? "DELETE" : "POST", `/api/v1/users/${userId}/follow`);
+      queryClient.invalidateQueries({ queryKey: ["user", userId] });
+    } catch (error) {
+      toast({
+        title: "팔로우 처리에 실패했어요",
+        description: error instanceof Error ? error.message : "잠시 후 다시 시도해주세요.",
+        variant: "destructive",
+      });
+    }
+  };
 
-  // 내 후기 목록 API
-  const { data: myReviewsData } = useQuery({
-    queryKey: ["user", "me", "reviews"],
+  const reviewsEndpoint = isOwnProfile ? "/api/v1/users/me/reviews" : `/api/v1/users/${userId}/reviews`;
+  const savedEndpoint = isOwnProfile
+    ? "/api/v1/users/me/saved-restaurants"
+    : `/api/v1/users/${userId}/saved-restaurants`;
+
+  const { data: reviewsData } = useQuery({
+    queryKey: ["user", userId ?? "me", "reviews"],
     queryFn: async () => {
-      const response = await apiRequest("GET", "/api/v1/users/me/reviews");
+      const response = await apiRequest("GET", reviewsEndpoint);
       const json = await response.json();
       return (json.data?.content ?? []) as ReviewItem[];
     },
     retry: false,
   });
+  const reviews = reviewsData ?? [];
 
-  const myReviews = myReviewsData ?? [];
-
-  // 저장한 맛집: localStorage(useSavedRestaurants)에 담긴 id들을 실제 맛집 상세 API로 조회
   const { data: savedRestaurantsData } = useQuery({
-    queryKey: ["restaurants", "saved", savedRestaurantIds],
+    queryKey: ["user", userId ?? "me", "saved-restaurants"],
     queryFn: async () => {
-      const results = await Promise.all(
-        savedRestaurantIds.map(async (id) => {
-          try {
-            const response = await apiRequest("GET", `/api/v1/restaurants/${id}`);
-            const json = await response.json();
-            return json.data as RestaurantItem;
-          } catch {
-            return null;
-          }
-        })
-      );
-      return results.filter((r): r is RestaurantItem => r !== null);
+      const response = await apiRequest("GET", `${savedEndpoint}?size=200`);
+      const json = await response.json();
+      return (json.data?.content ?? []) as RestaurantItem[];
     },
-    enabled: savedRestaurantIds.length > 0,
+    retry: false,
   });
-
-  const mySavedRestaurants = savedRestaurantsData ?? [];
+  const savedRestaurants = savedRestaurantsData ?? [];
 
   if (isLoadingUser) {
     return (
@@ -143,7 +166,11 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
       <div className="min-h-screen bg-background pb-20 flex items-center justify-center">
         <div className="text-center">
           <p className="text-destructive mb-4">프로필을 불러올 수 없습니다.</p>
-          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ["user", "me"] })}>
+          <Button
+            onClick={() =>
+              queryClient.invalidateQueries({ queryKey: isOwnProfile ? ["user", "me"] : ["user", userId] })
+            }
+          >
             다시 시도
           </Button>
         </div>
@@ -153,17 +180,14 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <TopHeader
-        onInviteFriendClick={() => setShowInviteDialog(true)}
-      />
+      <TopHeader onInviteFriendClick={() => setShowInviteDialog(true)} />
 
       <div className="max-w-5xl mx-auto">
-        {/* 프로필 헤더 - 깔끔한 디자인 */}
+        {/* 프로필 헤더 */}
         <div className="px-4 pt-4">
           <Card>
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row gap-6">
-                {/* 아바타 & 기본 정보 */}
                 <div className="flex flex-col items-center md:items-start">
                   <div className="relative mb-3">
                     <Avatar className="w-24 h-24 border-4 border-background shadow-lg">
@@ -172,49 +196,82 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
                     </Avatar>
                   </div>
 
-                  <h1 className="text-2xl font-bold text-foreground mb-4">{displayName}</h1>
+                  <h1 className="text-2xl font-bold text-foreground mb-2">{displayName}</h1>
+
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground mb-4">
+                    <span data-testid="text-follower-count">
+                      <span className="font-semibold text-foreground">{followerCount}</span> 팔로워
+                    </span>
+                    <span data-testid="text-following-count">
+                      <span className="font-semibold text-foreground">{followingCount}</span> 팔로잉
+                    </span>
+                  </div>
 
                   <div className="flex gap-2 flex-wrap">
-                    <Button
-                      variant="default"
-                      className="gap-2"
-                      onClick={() => setShowEditDialog(true)}
-                      data-testid="button-edit-profile"
-                    >
-                      <Settings className="w-4 h-4" />
-                      프로필 수정
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() => setShowInviteDialog(true)}
-                      data-testid="button-invite-friend"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      친구 초대
-                    </Button>
+                    {isOwnProfile ? (
+                      <>
+                        <Button
+                          variant="default"
+                          className="gap-2"
+                          onClick={() => setShowEditDialog(true)}
+                          data-testid="button-edit-profile"
+                        >
+                          <Settings className="w-4 h-4" />
+                          프로필 수정
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() => setShowInviteDialog(true)}
+                          data-testid="button-invite-friend"
+                        >
+                          <UserPlus className="w-4 h-4" />
+                          친구 초대
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant={otherInfo?.isFollowing ? "outline" : "default"}
+                        className="gap-2"
+                        onClick={handleToggleFollow}
+                        data-testid="button-toggle-follow"
+                      >
+                        {otherInfo?.isFollowing ? (
+                          <>
+                            <UserCheck className="w-4 h-4" />
+                            팔로잉
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="w-4 h-4" />
+                            팔로우
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
 
-                {/* 통계 (현재 API에서 제공하는 값만 표시) */}
-                <div className="flex-1">
-                  <div className="grid grid-cols-2 gap-3">
-                    <Card className="p-3 text-center" data-testid="stat-posts">
-                      <div className="text-2xl font-bold text-foreground">{myReviews.length}</div>
-                      <div className="text-xs text-muted-foreground">작성한 후기</div>
-                    </Card>
-                    <Card className="p-3 text-center" data-testid="stat-saved">
-                      <div className="text-2xl font-bold text-foreground">{savedRestaurantIds.length}</div>
-                      <div className="text-xs text-muted-foreground">저장한 맛집</div>
-                    </Card>
+                {isOwnProfile && (
+                  <div className="flex-1">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Card className="p-3 text-center" data-testid="stat-posts">
+                        <div className="text-2xl font-bold text-foreground">{reviews.length}</div>
+                        <div className="text-xs text-muted-foreground">작성한 후기</div>
+                      </Card>
+                      <Card className="p-3 text-center" data-testid="stat-saved">
+                        <div className="text-2xl font-bold text-foreground">{savedRestaurants.length}</div>
+                        <div className="text-xs text-muted-foreground">저장한 맛집</div>
+                      </Card>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* 탭 컨텐츠 */}
+        {/* 탭 컨텐츠 - 타인 프로필은 후기/저장만 노출 (기존과 동일) */}
         <div className="p-4">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="w-full grid grid-cols-2">
@@ -223,14 +280,14 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
             </TabsList>
 
             <TabsContent value="reviews" className="mt-4 space-y-3">
-              {myReviews.length === 0 ? (
+              {reviews.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <Star className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p className="text-lg font-medium mb-1">작성한 후기가 없습니다</p>
-                  <p className="text-sm">맛집에 다녀오고 첫 후기를 남겨보세요!</p>
+                  {isOwnProfile && <p className="text-sm">맛집에 다녀오고 첫 후기를 남겨보세요!</p>}
                 </div>
               ) : (
-                myReviews.map((review) => (
+                reviews.map((review) => (
                   <Card
                     key={review.id}
                     className="hover-elevate cursor-pointer"
@@ -280,25 +337,27 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
             </TabsContent>
 
             <TabsContent value="saved" className="mt-4 space-y-3">
-              <div className="flex justify-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs text-primary h-auto p-0"
-                  onClick={() => setLocation("/saved")}
-                  data-testid="button-view-all-saved"
-                >
-                  전체 보기 →
-                </Button>
-              </div>
-              {mySavedRestaurants.length === 0 ? (
+              {isOwnProfile && (
+                <div className="flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-primary h-auto p-0"
+                    onClick={() => setLocation("/saved")}
+                    data-testid="button-view-all-saved"
+                  >
+                    전체 보기 →
+                  </Button>
+                </div>
+              )}
+              {savedRestaurants.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground">
                   <Heart className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p className="text-lg font-medium mb-1">저장한 맛집이 없습니다</p>
-                  <p className="text-sm">마음에 드는 맛집을 저장해보세요!</p>
+                  {isOwnProfile && <p className="text-sm">마음에 드는 맛집을 저장해보세요!</p>}
                 </div>
               ) : (
-                mySavedRestaurants.map((restaurant) => (
+                savedRestaurants.map((restaurant) => (
                   <Card
                     key={restaurant.id}
                     className="hover-elevate cursor-pointer"
@@ -337,12 +396,14 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps = {
         onOpenChange={setShowInviteDialog}
       />
 
-      <EditProfileDialog
-        open={showEditDialog}
-        onOpenChange={setShowEditDialog}
-        currentNickname={displayName}
-        onSave={handleProfileSave}
-      />
+      {isOwnProfile && (
+        <EditProfileDialog
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          currentNickname={displayName}
+          onSave={handleProfileSave}
+        />
+      )}
 
       <BottomNavigation onNavigate={onNavigate} />
     </div>

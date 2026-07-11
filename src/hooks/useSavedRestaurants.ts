@@ -1,97 +1,52 @@
-import { useSyncExternalStore, useCallback } from 'react';
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
-const STORAGE_KEY = 'savedRestaurants';
-
-// 구독자들에게 변경사항을 알리기 위한 이벤트 이미터
-type Listener = () => void;
-const listeners = new Set<Listener>();
-
-function notifyListeners() {
-  listeners.forEach(listener => listener());
+interface SavedRestaurantItem {
+  id: number;
 }
 
-// 캐시된 스냅샷 (동일한 데이터일 때 동일한 참조 반환하여 불필요한 리렌더링 방지)
-let cachedSnapshot: string[] | null = null;
-let cachedSnapshotString: string | null = null;
+const QUERY_KEY = ["user", "me", "saved-restaurants"];
 
-// localStorage에서 데이터 읽기
-function getSnapshot(): string[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const savedString = saved || '[]';
-    
-    // 캐시된 값과 동일하면 동일한 참조 반환
-    if (savedString === cachedSnapshotString && cachedSnapshot !== null) {
-      return cachedSnapshot;
-    }
-    
-    // 새로운 값 파싱 및 캐시
-    cachedSnapshotString = savedString;
-    cachedSnapshot = JSON.parse(savedString) as string[];
-    return cachedSnapshot;
-  } catch (error) {
-    return [];
-  }
+function hasToken(): boolean {
+  return typeof localStorage !== "undefined" && !!localStorage.getItem("accessToken");
 }
 
-// SSR을 위한 서버 사이드 스냅샷
-function getServerSnapshot(): string[] {
-  return [];
-}
+export function useSavedRestaurants(restaurantId?: string) {
+  const queryClient = useQueryClient();
 
-// 구독 함수
-function subscribe(listener: Listener) {
-  listeners.add(listener);
-  
-  // storage 이벤트 리스너는 한 번만 추가 (다른 탭/창에서의 변경사항 감지)
-  if (listeners.size === 1) {
-    window.addEventListener('storage', handleStorageChange);
-  }
-  
-  return () => {
-    listeners.delete(listener);
-    if (listeners.size === 0) {
-      window.removeEventListener('storage', handleStorageChange);
+  const { data } = useQuery({
+    queryKey: QUERY_KEY,
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/v1/users/me/saved-restaurants?size=200");
+      const json = await res.json();
+      return (json.data?.content ?? []) as SavedRestaurantItem[];
+    },
+    enabled: hasToken(),
+    retry: false,
+  });
+
+  const saved = data ?? [];
+  const savedIds = saved.map((r) => String(r.id));
+  const isSaved = restaurantId ? savedIds.includes(restaurantId) : false;
+
+  const toggleSave = async (id: string) => {
+    if (!hasToken()) return;
+    const currentlySaved = savedIds.includes(id);
+
+    queryClient.setQueryData<SavedRestaurantItem[]>(QUERY_KEY, (old = []) =>
+      currentlySaved
+        ? old.filter((r) => String(r.id) !== id)
+        : [...old, { id: Number(id) }]
+    );
+
+    try {
+      await apiRequest(currentlySaved ? "DELETE" : "POST", `/api/v1/restaurants/${id}/save`);
+    } catch {
+      // 실패 시 서버 상태로 되돌림
+    } finally {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEY });
     }
   };
-}
-
-function handleStorageChange(e: StorageEvent) {
-  if (e.key === STORAGE_KEY) {
-    notifyListeners();
-  }
-}
-
-// 저장/삭제 토글
-export function toggleSaveRestaurant(id: string) {
-  try {
-    const saved = getSnapshot();
-    
-    const updated = saved.includes(id)
-      ? saved.filter((savedId) => savedId !== id)
-      : [...saved, id];
-    
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    
-    // 캐시 무효화 - 다음 getSnapshot 호출 시 새로운 데이터 읽도록
-    cachedSnapshot = null;
-    cachedSnapshotString = null;
-    
-    notifyListeners(); // 같은 탭 내 변경사항 즉시 전파
-  } catch (error) {
-    // 에러 무시
-  }
-}
-
-// 커스텀 훅
-export function useSavedRestaurants(restaurantId?: string) {
-  const savedIds = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  
-  const isSaved = restaurantId ? savedIds.includes(restaurantId) : false;
-  
-  const toggleSave = useCallback((id: string) => {
-    toggleSaveRestaurant(id);
-  }, []);
 
   return {
     savedIds,

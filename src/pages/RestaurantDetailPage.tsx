@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { ArrowLeft, MapPin, Star, ExternalLink, Heart, Pencil, Trash2, UtensilsCrossed } from "lucide-react";
 import TopHeader from "@/components/TopHeader";
 import BottomNavigation from "@/components/BottomNavigation";
@@ -39,6 +40,7 @@ interface ReviewItem {
 }
 
 export default function RestaurantDetailPage({ onNavigate, restaurantId }: RestaurantDetailPageProps) {
+  const [, setLocation] = useLocation();
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [editingReview, setEditingReview] = useState<ReviewItem | null>(null);
   const { toast } = useToast();
@@ -220,7 +222,13 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId }: Resta
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
-                              <span className="font-semibold text-sm text-foreground">{review.nickname}</span>
+                              <span
+                                className="font-semibold text-sm text-foreground hover:underline cursor-pointer"
+                                onClick={() => setLocation(`/profile/${review.userId}`)}
+                                data-testid={`link-review-author-${review.id}`}
+                              >
+                                {review.nickname}
+                              </span>
                               <div className="flex gap-0.5">
                                 {Array.from({ length: 5 }).map((_, i) => (
                                   <Star

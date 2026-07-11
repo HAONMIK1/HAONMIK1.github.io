@@ -130,12 +130,6 @@ export default function LoginPage({ onNavigate, inviteCode: propInviteCode }: Lo
       {/* 하단 로그인 영역 */}
       <div className="bg-card rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-6 pt-7 pb-8">
         <div className="max-w-sm mx-auto space-y-4">
-          {inviteCode && (
-            <div className="bg-primary/10 rounded-xl px-4 py-2.5 text-sm text-primary font-medium text-center">
-              🎉 초대 코드로 가입하면 보너스 포인트를 받아요!
-            </div>
-          )}
-
           <Button
             onClick={handleKakaoLogin}
             className="w-full h-14 text-base font-semibold rounded-2xl hover-elevate active-elevate-2"

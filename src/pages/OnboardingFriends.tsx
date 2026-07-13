@@ -76,10 +76,11 @@ export default function OnboardingFriends() {
             </span>
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">
-            친구를 초대해보세요<br />(선택 사항이에요)
+            지인을 초대해보세요<br />(선택 사항이에요)
           </h1>
           <p className="text-sm text-muted-foreground">
-            친구를 3명 이상 초대하면 1촌부터 3촌까지의 맛집이 더 풍성해져요
+            지인들이 다녀온 진짜 맛집을 알 수 있어요.<br />
+            지인들의 맛집이 궁금하다면 지금 초대해보세요.
           </p>
         </div>
       </div>
@@ -90,7 +91,7 @@ export default function OnboardingFriends() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="닉네임으로 친구 찾기"
+              placeholder="닉네임으로 지인 찾기"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -139,11 +140,16 @@ export default function OnboardingFriends() {
           </div>
         )}
 
-        {/* 친구 초대 */}
+        {/* 지인 초대 */}
         <Button variant="outline" className="w-full gap-2" onClick={() => setShowInvite(true)} data-testid="button-invite">
           <UserPlus className="w-4 h-4" />
-          카카오톡으로 친구 초대하기
+          카카오톡으로 지인 초대하기
         </Button>
+
+        <p className="text-xs text-center text-muted-foreground/70 italic">
+          (진짜 아무 일도 안 생겨요 ㅋㅋ 근데 이 글을 보고 지인을 3명 이상 초대하지 않으면...
+          여러분의 맛집 도전은 실패하길 기원합니다 👻)
+        </p>
       </div>
 
       {/* 하단 CTA */}

@@ -43,23 +43,23 @@ export default function InviteFriendDialog({ open, onOpenChange }: InviteFriendD
 
   const inviteUrl = `${window.location.origin}/invite/${inviteCode}`;
 
-  const inviteMessage = `친구야, 낙낙에서 진짜 맛집을 같이 찾자!\n\n친구들이 먹어본 맛집만 골라 보여주는 앱이야.\n초대 링크: ${inviteUrl}\n\n가입하면 보너스 포인트도 받을 수 있어! 🎉`;
+  const inviteMessage = `지인들이 진짜 다녀온 맛집, 궁금하지 않아?\n\n낙낙은 지인이 직접 가본 맛집만 모아 보여주는 앱이야.\n지인들의 맛집이 궁금하면 아래 링크로 들어와.\n초대 링크: ${inviteUrl}\n\n(이 글을 보고 가입 안 하면... 여러분의 맛집 도전은 실패하길 기원합니다 👻)`;
 
   const handleCopyCode = async () => {
     await navigator.clipboard.writeText(inviteCode);
-    toast({ title: "초대코드 복사 완료", description: "친구에게 공유해보세요!" });
+    toast({ title: "초대코드 복사 완료", description: "지인에게 공유해보세요!" });
   };
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(inviteUrl);
-    toast({ title: "초대 링크 복사 완료", description: "친구에게 링크를 공유해보세요!" });
+    toast({ title: "초대 링크 복사 완료", description: "지인에게 링크를 공유해보세요!" });
   };
 
   const handleShare = async () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "낙낙 친구 초대",
+          title: "낙낙 지인 초대",
           text: inviteMessage,
           url: inviteUrl,
         });
@@ -75,8 +75,8 @@ export default function InviteFriendDialog({ open, onOpenChange }: InviteFriendD
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md" data-testid="dialog-invite-friend">
         <DialogHeader>
-          <DialogTitle className="text-xl">친구 초대하기</DialogTitle>
-          <DialogDescription>친구를 초대하고 함께 맛집을 탐험하세요!</DialogDescription>
+          <DialogTitle className="text-xl">지인 초대하기</DialogTitle>
+          <DialogDescription>지인을 초대하고 진짜 맛집을 함께 나눠보세요!</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
@@ -156,8 +156,7 @@ export default function InviteFriendDialog({ open, onOpenChange }: InviteFriendD
           </div>
 
           <p className="text-xs text-center text-muted-foreground">
-            초대한 친구가 가입하면 1촌으로 자동 연결되고<br />
-            둘 다 보너스 포인트를 받아요!
+            초대한 지인이 가입하면 1촌으로 자동 연결돼요
           </p>
         </div>
       </DialogContent>

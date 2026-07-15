@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import StarRating from "@/components/StarRating";
 import { MapPin, Star, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
@@ -65,6 +64,7 @@ export default function RestaurantMapView({
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     setFollowingSet(new Set(followingIds));
@@ -135,7 +135,7 @@ export default function RestaurantMapView({
     places.forEach((p) => {
       const pos = new naver.maps.LatLng(p.lat, p.lng);
       const marker = new naver.maps.Marker({ position: pos, map: mapInstance.current, title: p.name });
-      naver.maps.Event.addListener(marker, "click", () => setSelectedId(p.restaurantId));
+      naver.maps.Event.addListener(marker, "click", () => focusPlace(p, { panMap: false }));
       markersRef.current.push(marker);
       bounds.extend(pos);
     });
@@ -149,13 +149,16 @@ export default function RestaurantMapView({
     }
   }, [places, selectedId]);
 
-  const selected = places.find((p) => p.restaurantId === selectedId) ?? null;
-
-  const focusPlace = (place: MapPlace) => {
+  const focusPlace = (place: MapPlace, options?: { panMap?: boolean }) => {
     setSelectedId(place.restaurantId);
-    if (mapInstance.current && window.naver) {
+    if ((options?.panMap ?? true) && mapInstance.current && window.naver) {
       mapInstance.current.panTo(new window.naver.maps.LatLng(place.lat, place.lng));
     }
+    cardRefs.current[place.restaurantId]?.scrollIntoView({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest",
+    });
   };
 
   // SDK 키 없음 → 목록 폴백
@@ -192,126 +195,146 @@ export default function RestaurantMapView({
     );
   }
 
-  return (
-    <div className={cn("flex gap-2 items-start", className)}>
-      {/* 지도 */}
-      <div className="relative flex-[3] min-w-0">
-        <div ref={mapRef} className={cn("w-full rounded-2xl overflow-hidden", heightClass)} data-testid="map-canvas" />
-        {selected && (
-          <Card className="absolute bottom-3 left-3 right-3 p-3 shadow-lg" data-testid="map-mini-card">
-            <div className="flex items-center justify-between gap-3">
-              <div
-                className="min-w-0 cursor-pointer"
-                onClick={() => setLocation(`/restaurant/${selected.restaurantId}`)}
-              >
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold truncate text-sm">{selected.name}</p>
-                  {selected.category && <Badge variant="secondary" className="text-[10px] shrink-0">{selected.category}</Badge>}
-                </div>
-                {selected.address && <p className="text-xs text-muted-foreground mt-1 truncate">{selected.address}</p>}
-                <div className="mt-1">
-                  <StarRating rating={Math.round(selected.ratingAverage ?? 0)} size="sm" />
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5 shrink-0">
-                <Button size="sm" onClick={() => setLocation(`/restaurant/${selected.restaurantId}`)}>
-                  상세
-                </Button>
-                {selected.naverPlaceUrl && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1 text-[#03C75A]"
-                    onClick={() => window.open(selected.naverPlaceUrl, "_blank")}
-                    data-testid="map-naver-link"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" /> 네이버
-                  </Button>
-                )}
-              </div>
-            </div>
-          </Card>
-        )}
-      </div>
+  const isEmpty = reviewItems ? reviewItems.length === 0 : places.length === 0;
 
-      {/* 목록 — 클릭하면 지도가 해당 위치로 이동 */}
-      <div className={cn("flex-[2] min-w-0 overflow-y-auto space-y-2", heightClass)} data-testid="map-side-list">
-        {reviewItems ? (
-          reviewItems.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8 px-2">표시할 후기가 없어요</p>
-          ) : (
-            reviewItems.map((item) => {
-              const place = places.find((p) => p.restaurantId === item.restaurantId);
-              const isFollowing = followingSet.has(item.userId);
-              return (
-                <Card
-                  key={item.reviewId}
-                  className={cn(
-                    "p-2.5 cursor-pointer hover-elevate transition-colors",
-                    selectedId === item.restaurantId && "border-primary bg-primary/5"
-                  )}
-                  onClick={() => place && focusPlace(place)}
-                  data-testid={`map-side-list-item-${item.reviewId}`}
-                >
-                  <p className="text-xs font-semibold truncate">{item.restaurantName}</p>
-                  <div className="flex items-center justify-between gap-1 mt-1">
-                    <p
-                      className="text-[10px] text-muted-foreground truncate hover:text-foreground hover:underline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setLocation(`/profile/${item.userId}`);
-                      }}
-                      data-testid={`map-side-list-nickname-${item.userId}`}
-                    >
-                      {item.nickname}
-                    </p>
-                    {myUserId !== item.userId && (
-                      <button
-                        type="button"
-                        onClick={(e) => handleToggleFollow(e, item.userId)}
-                        className="shrink-0"
-                        data-testid={`button-follow-${item.userId}`}
-                      >
-                        <Badge
-                          variant={isFollowing ? "default" : "outline"}
-                          className="text-[9px] font-normal cursor-pointer px-1.5 py-0"
-                        >
-                          {isFollowing ? "팔로잉" : "팔로우"}
-                        </Badge>
-                      </button>
+  return (
+    <div className={cn("relative", className)}>
+      {/* 지도 — 목록을 옆에 따로 두지 않고 하단에 오버레이 캐러셀로 겹쳐서 보여준다 (좁은 화면 대응) */}
+      <div ref={mapRef} className={cn("w-full rounded-2xl overflow-hidden", heightClass)} data-testid="map-canvas" />
+
+      {isEmpty ? (
+        <div
+          className="absolute bottom-3 left-3 right-3 rounded-xl bg-card/95 backdrop-blur-sm py-3 text-center text-xs text-muted-foreground shadow-lg"
+          data-testid="map-overlay-empty"
+        >
+          {reviewItems ? "표시할 후기가 없어요" : "표시할 맛집이 없어요"}
+        </div>
+      ) : (
+        <div
+          className="absolute bottom-3 left-0 right-0 flex gap-2 overflow-x-auto px-3 pb-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
+          data-testid="map-overlay-list"
+        >
+          {reviewItems
+            ? reviewItems.map((item) => {
+                const place = places.find((p) => p.restaurantId === item.restaurantId);
+                const isFollowing = followingSet.has(item.userId);
+                const isSelected = selectedId === item.restaurantId;
+                return (
+                  <Card
+                    key={item.reviewId}
+                    ref={(el) => {
+                      cardRefs.current[item.restaurantId] = el;
+                    }}
+                    className={cn(
+                      "shrink-0 w-[180px] snap-start p-2.5 cursor-pointer shadow-lg transition-colors",
+                      isSelected ? "border-primary bg-primary/5" : "bg-card/95 backdrop-blur-sm"
                     )}
-                  </div>
-                  <div className="flex items-center gap-1 mt-1">
-                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                    <span className="text-[10px] font-medium">{item.rating}</span>
-                  </div>
-                </Card>
-              );
-            })
-          )
-        ) : places.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-8 px-2">표시할 맛집이 없어요</p>
-        ) : (
-          places.map((p) => (
-            <Card
-              key={p.restaurantId}
-              className={cn(
-                "p-2.5 cursor-pointer hover-elevate transition-colors",
-                selectedId === p.restaurantId && "border-primary bg-primary/5"
-              )}
-              onClick={() => focusPlace(p)}
-              data-testid={`map-side-list-item-${p.restaurantId}`}
-            >
-              <p className="text-xs font-semibold truncate">{p.name}</p>
-              {p.category && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{p.category}</p>}
-              <div className="flex items-center gap-1 mt-1">
-                <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                <span className="text-[10px] font-medium">{(p.ratingAverage ?? 0).toFixed(1)}</span>
-              </div>
-            </Card>
-          ))
-        )}
-      </div>
+                    onClick={() => place && focusPlace(place)}
+                    data-testid={`map-overlay-item-${item.reviewId}`}
+                  >
+                    <p className="text-xs font-semibold truncate">{item.restaurantName}</p>
+                    <div className="flex items-center justify-between gap-1 mt-1">
+                      <p
+                        className="text-[10px] text-muted-foreground truncate hover:text-foreground hover:underline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLocation(`/profile/${item.userId}`);
+                        }}
+                        data-testid={`map-overlay-nickname-${item.userId}`}
+                      >
+                        {item.nickname}
+                      </p>
+                      {myUserId !== item.userId && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleFollow(e, item.userId)}
+                          className="shrink-0"
+                          data-testid={`button-follow-${item.userId}`}
+                        >
+                          <Badge
+                            variant={isFollowing ? "default" : "outline"}
+                            className="text-[9px] font-normal cursor-pointer px-1.5 py-0"
+                          >
+                            {isFollowing ? "팔로잉" : "팔로우"}
+                          </Badge>
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 mt-1">
+                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                      <span className="text-[10px] font-medium">{item.rating}</span>
+                    </div>
+                    {isSelected && (
+                      <div className="flex gap-1.5 mt-2">
+                        <Button
+                          size="sm"
+                          className="flex-1 h-7 text-xs px-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLocation(`/restaurant/${item.restaurantId}`);
+                          }}
+                        >
+                          상세
+                        </Button>
+                      </div>
+                    )}
+                  </Card>
+                );
+              })
+            : places.map((p) => {
+                const isSelected = selectedId === p.restaurantId;
+                return (
+                  <Card
+                    key={p.restaurantId}
+                    ref={(el) => {
+                      cardRefs.current[p.restaurantId] = el;
+                    }}
+                    className={cn(
+                      "shrink-0 w-[180px] snap-start p-2.5 cursor-pointer shadow-lg transition-colors",
+                      isSelected ? "border-primary bg-primary/5" : "bg-card/95 backdrop-blur-sm"
+                    )}
+                    onClick={() => focusPlace(p)}
+                    data-testid={`map-overlay-item-${p.restaurantId}`}
+                  >
+                    <p className="text-xs font-semibold truncate">{p.name}</p>
+                    {p.category && <p className="text-[10px] text-muted-foreground truncate mt-0.5">{p.category}</p>}
+                    <div className="flex items-center gap-1 mt-1">
+                      <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                      <span className="text-[10px] font-medium">{(p.ratingAverage ?? 0).toFixed(1)}</span>
+                    </div>
+                    {isSelected && (
+                      <div className="flex gap-1.5 mt-2">
+                        <Button
+                          size="sm"
+                          className="flex-1 h-7 text-xs px-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLocation(`/restaurant/${p.restaurantId}`);
+                          }}
+                        >
+                          상세
+                        </Button>
+                        {p.naverPlaceUrl && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 h-7 text-xs px-2 text-[#03C75A]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(p.naverPlaceUrl, "_blank");
+                            }}
+                            data-testid="map-naver-link"
+                          >
+                            <ExternalLink className="w-3 h-3" /> 네이버
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+        </div>
+      )}
     </div>
   );
 }

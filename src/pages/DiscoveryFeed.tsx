@@ -20,6 +20,12 @@ const FILTER_LABELS: Record<NetworkFilter, string> = {
   "3rd": "3촌+",
 };
 
+const DEGREE_BY_FILTER: Record<NetworkFilter, number> = {
+  "1st": 1,
+  "2nd": 2,
+  "3rd": 3,
+};
+
 interface ReviewItem {
   id: number;
   restaurantId: number;
@@ -59,15 +65,16 @@ export default function DiscoveryFeed({ onNavigate }: DiscoveryFeedProps = {}) {
     );
   };
 
-  // 팔로우 기반 피드 API가 아직 없어서, 지금 보여줄 수 있는 실제 데이터는 내 후기뿐이다.
-  // 피드 API가 생기면 이 쿼리만 교체하면 된다.
+  const degrees = networkFilters.map((f) => DEGREE_BY_FILTER[f]);
+
   const { data: reviewsData } = useQuery({
-    queryKey: ["user", "me", "reviews"],
+    queryKey: ["feed", "reviews", degrees],
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/v1/users/me/reviews");
+      const res = await apiRequest("GET", `/api/v1/feed/reviews?degrees=${degrees.join(",")}`);
       const json = await res.json();
       return (json.data?.content ?? []) as ReviewItem[];
     },
+    enabled: degrees.length > 0,
     retry: false,
   });
   const reviews = reviewsData ?? [];
@@ -139,8 +146,8 @@ export default function DiscoveryFeed({ onNavigate }: DiscoveryFeedProps = {}) {
     }));
 
   const noFilterSelected = networkFilters.length === 0;
-  const visibleReviews = noFilterSelected ? [] : reviews;
-  const visiblePlaces = noFilterSelected ? [] : mapPlaces;
+  const visibleReviews = reviews;
+  const visiblePlaces = mapPlaces;
 
   const reviewItems: ReviewListItem[] = visibleReviews.map((r) => ({
     reviewId: r.id,

@@ -26,6 +26,7 @@ interface RestaurantDetail {
   category: string;
   address: string;
   naverPlaceUrl?: string;
+  imageUrls?: string[];
 }
 
 interface ReviewItem {
@@ -148,6 +149,24 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId }: Resta
             뒤로가기
           </Button>
         </div>
+
+        {/* 대표 사진 — 네이버 검색으로 가져온 참고 사진(등록 시점 수집), 후기 사진과는 별개 */}
+        {restaurant.imageUrls && restaurant.imageUrls.length > 0 && (
+          <div
+            className="flex gap-2 overflow-x-auto px-4 mt-3 pb-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
+            data-testid="restaurant-photo-gallery"
+          >
+            {restaurant.imageUrls.map((url, i) => (
+              <img
+                key={i}
+                src={url}
+                alt={`${restaurant.name} 사진 ${i + 1}`}
+                className="h-44 w-64 flex-shrink-0 snap-start rounded-2xl object-cover bg-muted"
+                data-testid={`restaurant-photo-${i}`}
+              />
+            ))}
+          </div>
+        )}
 
         {/* 맛집 헤더 */}
         <div className="px-4 mt-2">

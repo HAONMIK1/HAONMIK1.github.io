@@ -5,10 +5,12 @@ import TopHeader from "@/components/TopHeader";
 import BottomNavigation from "@/components/BottomNavigation";
 import InviteFriendDialog from "@/components/InviteFriendDialog";
 import RestaurantMapView, { MapPlace, ReviewListItem } from "@/components/RestaurantMapView";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useSavedRestaurants } from "@/hooks/useSavedRestaurants";
 import { apiRequest } from "@/lib/queryClient";
+import { getAvatarColorClass } from "@/lib/avatarColor";
 import { cn } from "@/lib/utils";
 import { List, Map as MapIcon, Plus, Star, UtensilsCrossed } from "lucide-react";
 
@@ -17,7 +19,7 @@ type NetworkFilter = "1st" | "2nd" | "3rd";
 const FILTER_LABELS: Record<NetworkFilter, string> = {
   "1st": "1촌",
   "2nd": "2촌",
-  "3rd": "3촌+",
+  "3rd": "3촌",
 };
 
 const DEGREE_BY_FILTER: Record<NetworkFilter, number> = {
@@ -46,6 +48,7 @@ interface RestaurantDetail {
   latitude?: number;
   longitude?: number;
   naverPlaceUrl?: string;
+  imageUrls?: string[];
 }
 
 interface DiscoveryFeedProps {
@@ -132,6 +135,16 @@ export default function DiscoveryFeed({ onNavigate }: DiscoveryFeedProps = {}) {
     }
   });
 
+  // 리뷰에 직접 첨부한 사진이 없으면, 등록 시 네이버에서 가져온 맛집 대표 사진으로 대체한다.
+  const fallbackPhotoByRestaurant = new Map<number, string>();
+  const categoryByRestaurant = new Map<number, string>();
+  restaurants.forEach((r) => {
+    if (r.imageUrls && r.imageUrls.length > 0) {
+      fallbackPhotoByRestaurant.set(r.id, r.imageUrls[0]);
+    }
+    categoryByRestaurant.set(r.id, r.category);
+  });
+
   const mapPlaces: MapPlace[] = restaurants
     .filter((r) => typeof r.latitude === "number" && typeof r.longitude === "number")
     .map((r) => ({
@@ -143,6 +156,7 @@ export default function DiscoveryFeed({ onNavigate }: DiscoveryFeedProps = {}) {
       lat: r.latitude as number,
       lng: r.longitude as number,
       naverPlaceUrl: r.naverPlaceUrl,
+      imageUrl: fallbackPhotoByRestaurant.get(r.id),
     }));
 
   const noFilterSelected = networkFilters.length === 0;
@@ -165,65 +179,62 @@ export default function DiscoveryFeed({ onNavigate }: DiscoveryFeedProps = {}) {
     <div className="min-h-screen bg-background pb-20">
       <TopHeader onInviteFriendClick={() => setShowInviteDialog(true)} />
 
-      <div className="max-w-2xl mx-auto p-4 space-y-5">
-        {/* 리스트 / 지도 보기 전환 */}
-        <div className="flex justify-center">
-          <div className="inline-flex rounded-full bg-muted p-1" data-testid="view-toggle">
-            <button
-              onClick={() => setViewMode("list")}
-              className={cn(
-                "flex items-center gap-1.5 px-5 py-1.5 rounded-full text-sm font-semibold transition-all",
-                viewMode === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-              )}
-              data-testid="view-list"
-            >
-              <List className="w-4 h-4" /> 리스트
-            </button>
-            <button
-              onClick={() => setViewMode("map")}
-              className={cn(
-                "flex items-center gap-1.5 px-5 py-1.5 rounded-full text-sm font-semibold transition-all",
-                viewMode === "map" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-              )}
-              data-testid="view-map"
-            >
-              <MapIcon className="w-4 h-4" /> 지도
-            </button>
-          </div>
-        </div>
-
+      <div className="max-w-2xl mx-auto p-4 space-y-7">
         {/* 네트워크 필터 (복수 선택 토글) */}
         <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-muted-foreground">네트워크 필터</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-1 rounded-full bg-muted p-0.5" data-testid="view-toggle">
+              <button
+                onClick={() => setViewMode("list")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all",
+                  viewMode === "list" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                )}
+                aria-label="리스트 보기"
+                data-testid="view-list"
+              >
+                <List className="w-3.5 h-3.5" /> 리스트
+              </button>
+              <button
+                onClick={() => setViewMode("map")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all",
+                  viewMode === "map" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                )}
+                aria-label="지도 보기"
+                data-testid="view-map"
+              >
+                <MapIcon className="w-3.5 h-3.5" /> 지도
+              </button>
+            </div>
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs text-primary h-auto p-0"
+              className="text-xs text-muted-foreground h-auto p-0"
               onClick={() => setNetworkFilters(["1st", "2nd", "3rd"])}
               data-testid="button-filter-reset"
             >
               전체 선택
             </Button>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2.5">
             {(
               [
-                ["1st", "bg-primary/10 dark:bg-primary/20 border-primary text-primary"],
-                ["2nd", "bg-green-50 dark:bg-green-950/30 border-green-500 text-green-600 dark:text-green-400"],
-                ["3rd", "bg-purple-50 dark:bg-purple-950/30 border-purple-500 text-purple-600 dark:text-purple-400"],
+                ["1st", "border-primary text-primary"],
+                ["2nd", "border-green-500 text-green-600 dark:text-green-400"],
+                ["3rd", "border-purple-500 text-purple-600 dark:text-purple-400"],
               ] as [NetworkFilter, string][]
             ).map(([filter, activeClass]) => (
               <button
                 key={filter}
                 onClick={() => toggleFilter(filter)}
                 className={cn(
-                  "py-3 px-4 rounded-lg border-2 transition-all hover-elevate active-elevate-2",
-                  networkFilters.includes(filter) ? activeClass : "bg-card border-border"
+                  "py-2.5 rounded-full border transition-all hover-elevate active-elevate-2 text-center text-sm font-medium",
+                  networkFilters.includes(filter) ? activeClass : "bg-transparent border-border text-muted-foreground"
                 )}
                 data-testid={`filter-${filter}`}
               >
-                <div className="text-center text-sm font-semibold">{FILTER_LABELS[filter]}</div>
+                {FILTER_LABELS[filter]}
               </button>
             ))}
           </div>
@@ -237,7 +248,7 @@ export default function DiscoveryFeed({ onNavigate }: DiscoveryFeedProps = {}) {
               reviewItems={reviewItems}
               myUserId={myId}
               followingIds={followingIds}
-              heightClass="h-[55vh]"
+              heightClass="h-[68vh]"
             />
           ) : noFilterSelected ? (
             <div className="text-center py-16 text-muted-foreground">
@@ -253,53 +264,95 @@ export default function DiscoveryFeed({ onNavigate }: DiscoveryFeedProps = {}) {
               </Button>
             </div>
           ) : (
-            <div className="space-y-3">
-              {visibleReviews.map((review) => (
-                <Card
-                  key={review.id}
-                  className="hover-elevate cursor-pointer"
-                  onClick={() => setLocation(`/restaurant/${review.restaurantId}`)}
-                  data-testid={`feed-review-${review.id}`}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex gap-3 mb-2">
-                      <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
-                        {review.imageUrls[0] ? (
-                          <img
-                            src={review.imageUrls[0]}
-                            alt={review.restaurantName}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <UtensilsCrossed className="w-5 h-5 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-sm text-foreground truncate">
-                          {review.restaurantName}
-                        </h3>
-                        <div className="flex items-center gap-0.5 my-1">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={cn(
-                                "w-3 h-3",
-                                i < review.rating
-                                  ? "fill-yellow-400 text-yellow-400"
-                                  : "text-muted-foreground/40"
-                              )}
-                            />
-                          ))}
+            <div className="space-y-6">
+              {visibleReviews.map((review) => {
+                const photo = review.imageUrls[0] ?? fallbackPhotoByRestaurant.get(review.restaurantId);
+                const category = categoryByRestaurant.get(review.restaurantId);
+                return (
+                  <Card
+                    key={review.id}
+                    className="cursor-pointer overflow-hidden border-none shadow-sm transition-all hover:shadow-md active:scale-[0.99]"
+                    onClick={() => setLocation(`/restaurant/${review.restaurantId}`)}
+                    data-testid={`feed-review-${review.id}`}
+                  >
+                    {/* 매거진형: 사진이 주인공 — 이름/카테고리/별점을 스크림 위에 올린다 */}
+                    {photo ? (
+                      <div className="relative aspect-[16/9]">
+                        <img
+                          src={photo}
+                          alt={review.restaurantName}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/65 via-black/25 to-transparent" />
+                        <div className="absolute bottom-3 left-4 right-4">
+                          <h3 className="text-white text-lg font-bold drop-shadow-sm truncate">
+                            {review.restaurantName}
+                          </h3>
+                          <p className="flex items-center gap-1 text-white/85 text-xs font-medium mt-0.5">
+                            {category && <span>{category} ·</span>}
+                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                            {review.rating.toFixed(1)}
+                          </p>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          {review.nickname} · {formatDate(review.createdAt)}
-                        </p>
                       </div>
-                    </div>
-                    <p className="text-sm text-foreground line-clamp-2">{review.content}</p>
-                  </CardContent>
-                </Card>
-              ))}
+                    ) : (
+                      <div className="h-24 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent flex items-center justify-center">
+                        <UtensilsCrossed className="w-8 h-8 text-primary/30" />
+                      </div>
+                    )}
+
+                    <CardContent className="p-4">
+                      {/* 사진이 없으면 이름/별점을 본문에 표시 */}
+                      {!photo && (
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          <h3 className="text-base font-bold text-foreground truncate">{review.restaurantName}</h3>
+                          <span className="flex items-center gap-0.5 text-sm font-semibold text-foreground shrink-0">
+                            <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                            {review.rating.toFixed(1)}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* 말풍선 후기 — 지인이 직접 말해주는 느낌 */}
+                      <div className="flex gap-2.5">
+                        <Avatar
+                          className="w-8 h-8 shrink-0 cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLocation(`/profile/${review.userId}`);
+                          }}
+                          data-testid={`feed-review-author-${review.id}`}
+                        >
+                          <AvatarFallback
+                            className={cn(getAvatarColorClass(review.nickname), "text-white text-xs font-bold")}
+                          >
+                            {review.nickname.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-baseline gap-1.5 mb-1">
+                            <span
+                              className="text-xs font-semibold text-foreground hover:underline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLocation(`/profile/${review.userId}`);
+                              }}
+                            >
+                              {review.nickname}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground">{formatDate(review.createdAt)}</span>
+                          </div>
+                          <div className="bg-muted rounded-2xl rounded-tl-md px-3.5 py-2.5 w-fit max-w-full">
+                            <p className="text-sm text-foreground leading-relaxed line-clamp-3">
+                              {review.content}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </section>

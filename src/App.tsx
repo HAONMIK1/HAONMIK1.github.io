@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import DiscoveryFeed from "@/pages/DiscoveryFeed";
 import UserProfilePage from "@/pages/UserProfilePage";
 import PointsPage from "@/pages/PointsPage";
+import RankingPage from "@/pages/RankingPage";
 import OnboardingLicense from "@/pages/OnboardingLicense";
 import LicenseProgress from "@/pages/LicenseProgress";
 import AddRestaurantDialog from "@/components/AddRestaurantDialog";
@@ -105,7 +106,10 @@ function Router() {
       case "notifications":
         setLocation("/notifications");
         break;
-      case "activity":
+      case "ranking":
+        setLocation("/ranking");
+        break;
+      case "points":
         setLocation("/points");
         break;
       case "profile":
@@ -202,6 +206,13 @@ function Router() {
           {() => (
             <ProtectedRoute>
               <PointsPage onNavigate={handleNavigation} />
+            </ProtectedRoute>
+          )}
+        </Route>
+        <Route path="/ranking">
+          {() => (
+            <ProtectedRoute>
+              <RankingPage onNavigate={handleNavigation} />
             </ProtectedRoute>
           )}
         </Route>

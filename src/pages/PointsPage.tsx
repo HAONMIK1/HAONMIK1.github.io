@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import TopHeader from "@/components/TopHeader";
 import BottomNavigation from "@/components/BottomNavigation";
 import { Card } from "@/components/ui/card";
 import { apiRequest } from "@/lib/queryClient";
-import { Coins, Gift, Star } from "lucide-react";
+import { ChevronRight, Coins, Gift, Star } from "lucide-react";
 
 interface PointsPageProps {
   onNavigate?: (id: string) => void;
@@ -15,6 +16,8 @@ interface WalletData {
 }
 
 export default function PointsPage({ onNavigate }: PointsPageProps = {}) {
+  const [, setLocation] = useLocation();
+
   const { data: wallet, isLoading } = useQuery({
     queryKey: ["me", "wallet"],
     queryFn: async () => {
@@ -74,13 +77,22 @@ export default function PointsPage({ onNavigate }: PointsPageProps = {}) {
           </div>
         </section>
 
-        {/* 복권 응모 — 다음 단계 */}
+        {/* 복권 응모 */}
         <section>
           <h2 className="text-sm font-semibold text-muted-foreground mb-3">포인트로 응모하기</h2>
-          <Card className="p-6 text-center text-muted-foreground">
-            <Gift className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
-            <p className="text-sm font-medium mb-1">복권 응모는 준비 중이에요</p>
-            <p className="text-xs">모은 포인트로 상품권 복권에 응모할 수 있게 될 거예요</p>
+          <Card
+            className="p-5 flex items-center gap-3 cursor-pointer hover-elevate"
+            onClick={() => setLocation("/raffles")}
+            data-testid="button-go-raffles"
+          >
+            <div className="flex items-center justify-center w-11 h-11 rounded-full bg-primary/10 shrink-0">
+              <Gift className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">복권 보러가기</p>
+              <p className="text-xs text-muted-foreground">모은 포인트로 상품권 복권에 응모해보세요</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
           </Card>
         </section>
       </div>

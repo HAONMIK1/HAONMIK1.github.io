@@ -9,6 +9,8 @@ import DiscoveryFeed from "@/pages/DiscoveryFeed";
 import UserProfilePage from "@/pages/UserProfilePage";
 import PointsPage from "@/pages/PointsPage";
 import RankingPage from "@/pages/RankingPage";
+import RafflePage from "@/pages/RafflePage";
+import RaffleDetailPage from "@/pages/RaffleDetailPage";
 import OnboardingLicense from "@/pages/OnboardingLicense";
 import LicenseProgress from "@/pages/LicenseProgress";
 import AddRestaurantDialog from "@/components/AddRestaurantDialog";
@@ -213,6 +215,20 @@ function Router() {
           {() => (
             <ProtectedRoute>
               <RankingPage onNavigate={handleNavigation} />
+            </ProtectedRoute>
+          )}
+        </Route>
+        <Route path="/raffles">
+          {() => (
+            <ProtectedRoute>
+              <RafflePage onNavigate={handleNavigation} />
+            </ProtectedRoute>
+          )}
+        </Route>
+        <Route path="/raffles/:id">
+          {(params) => (
+            <ProtectedRoute>
+              <RaffleDetailPage onNavigate={handleNavigation} raffleId={params.id} />
             </ProtectedRoute>
           )}
         </Route>

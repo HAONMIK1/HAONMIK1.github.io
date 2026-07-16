@@ -156,8 +156,9 @@ export default function RestaurantMapView({
     });
   }, [mapReady]);
 
-  // 마커 아이콘: 평소엔 전부 같은 모양의 작은 점으로 통일해서 인원이 많아도 지도가 정신없어 보이지
-  // 않게 하고, 선택된 마커 하나만 그 리뷰어의 색/이니셜 아바타로 확대해 "누구인지"를 보여준다.
+  // 마커 아이콘: 평소엔 별점이 보이는 핀으로 통일해서 지도만 봐도 어디에 뭐가 있고 평이 어떤지
+  // 바로 알 수 있게 한다(예전엔 죄다 작은 점이라 눌러보기 전엔 아무것도 안 보여서 맛집을 찾기
+  // 불편했다). 선택된 마커 하나만 그 리뷰어의 색/이니셜 아바타로 확대해 "누구인지"를 보여준다.
   // 아바타 스택에서 사람을 고르면(스포트라이트) 그 사람 맛집만 아바타 칩으로 강조하고 나머지는 흐리게.
   const buildIcon = (naver: any, place: MapPlace, isSelected: boolean) => {
     const spotlightUser =
@@ -174,15 +175,26 @@ export default function RestaurantMapView({
       size: new naver.maps.Size(px, px),
       anchor: new naver.maps.Point(px / 2, px / 2),
     });
+    // 맛집을 찾기 쉽게 별점이 보이는 핀 — 아래쪽 꼬리가 실제 좌표를 정확히 가리킨다.
+    const ratingPin = (emphasized: boolean) => {
+      const label = typeof place.ratingAverage === "number" ? place.ratingAverage.toFixed(1) : "🍴";
+      const w = emphasized ? 40 : 32;
+      const h = emphasized ? 26 : 22;
+      const tail = 7;
+      return {
+        content: `<div style="display:flex;flex-direction:column;align-items:center;width:${w}px">
+          <div style="width:${w}px;height:${h}px;background:hsl(var(--primary));color:white;font-weight:700;font-size:${
+            emphasized ? 12 : 10
+          }px;border-radius:9999px;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;white-space:nowrap;">${label}</div>
+          <div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:${tail}px solid hsl(var(--primary));margin-top:-2px;"></div>
+        </div>`,
+        size: new naver.maps.Size(w, h + tail),
+        anchor: new naver.maps.Point(w / 2, h + tail),
+      };
+    };
 
     if (isSelected) {
-      return reviewer
-        ? avatarChip(reviewer.nickname, 40, 3)
-        : {
-            content: `<div style="width:22px;height:22px" class="rounded-full bg-primary border-[3px] border-white shadow-xl"></div>`,
-            size: new naver.maps.Size(22, 22),
-            anchor: new naver.maps.Point(11, 11),
-          };
+      return reviewer ? avatarChip(reviewer.nickname, 40, 3) : ratingPin(true);
     }
 
     if (spotlightRestaurantIds !== null) {
@@ -197,11 +209,7 @@ export default function RestaurantMapView({
       };
     }
 
-    return {
-      content: `<div style="width:14px;height:14px" class="rounded-full bg-primary/80 border-2 border-white shadow-md"></div>`,
-      size: new naver.maps.Size(14, 14),
-      anchor: new naver.maps.Point(7, 7),
-    };
+    return ratingPin(false);
   };
 
   // 마커 갱신 (선택된 네트워크 필터에 따라 상위(DiscoveryFeed)에서 이미 걸러진 places가 내려온다)

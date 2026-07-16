@@ -264,59 +264,22 @@ export default function DiscoveryFeed({ onNavigate }: DiscoveryFeedProps = {}) {
               </Button>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {visibleReviews.map((review) => {
                 const photo = review.imageUrls[0] ?? fallbackPhotoByRestaurant.get(review.restaurantId);
                 const category = categoryByRestaurant.get(review.restaurantId);
                 return (
                   <Card
                     key={review.id}
-                    className="cursor-pointer overflow-hidden border-none shadow-sm transition-all hover:shadow-md active:scale-[0.99]"
+                    className="cursor-pointer border-none shadow-sm transition-all hover:shadow-md active:scale-[0.99]"
                     onClick={() => setLocation(`/restaurant/${review.restaurantId}`)}
                     data-testid={`feed-review-${review.id}`}
                   >
-                    {/* 매거진형: 사진이 주인공 — 이름/카테고리/별점을 스크림 위에 올린다 */}
-                    {photo ? (
-                      <div className="relative aspect-[16/9]">
-                        <img
-                          src={photo}
-                          alt={review.restaurantName}
-                          className="absolute inset-0 w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/65 via-black/25 to-transparent" />
-                        <div className="absolute bottom-3 left-4 right-4">
-                          <h3 className="text-white text-lg font-bold drop-shadow-sm truncate">
-                            {review.restaurantName}
-                          </h3>
-                          <p className="flex items-center gap-1 text-white/85 text-xs font-medium mt-0.5">
-                            {category && <span>{category} ·</span>}
-                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                            {review.rating.toFixed(1)}
-                          </p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="h-24 bg-gradient-to-br from-primary/15 via-primary/5 to-transparent flex items-center justify-center">
-                        <UtensilsCrossed className="w-8 h-8 text-primary/30" />
-                      </div>
-                    )}
-
                     <CardContent className="p-4">
-                      {/* 사진이 없으면 이름/별점을 본문에 표시 */}
-                      {!photo && (
-                        <div className="flex items-center justify-between gap-2 mb-3">
-                          <h3 className="text-base font-bold text-foreground truncate">{review.restaurantName}</h3>
-                          <span className="flex items-center gap-0.5 text-sm font-semibold text-foreground shrink-0">
-                            <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                            {review.rating.toFixed(1)}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* 말풍선 후기 — 지인이 직접 말해주는 느낌 */}
-                      <div className="flex gap-2.5">
+                      {/* 작성자를 맨 위, 크게 — "누구의 후기인지"가 가장 먼저 눈에 들어오게 */}
+                      <div className="flex items-center gap-3 mb-3">
                         <Avatar
-                          className="w-8 h-8 shrink-0 cursor-pointer"
+                          className="w-11 h-11 shrink-0 cursor-pointer"
                           onClick={(e) => {
                             e.stopPropagation();
                             setLocation(`/profile/${review.userId}`);
@@ -324,31 +287,58 @@ export default function DiscoveryFeed({ onNavigate }: DiscoveryFeedProps = {}) {
                           data-testid={`feed-review-author-${review.id}`}
                         >
                           <AvatarFallback
-                            className={cn(getAvatarColorClass(review.nickname), "text-white text-xs font-bold")}
+                            className={cn(getAvatarColorClass(review.nickname), "text-white text-base font-bold")}
                           >
                             {review.nickname.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-baseline gap-1.5 mb-1">
-                            <span
-                              className="text-xs font-semibold text-foreground hover:underline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setLocation(`/profile/${review.userId}`);
-                              }}
-                            >
-                              {review.nickname}
-                            </span>
-                            <span className="text-[11px] text-muted-foreground">{formatDate(review.createdAt)}</span>
-                          </div>
-                          <div className="bg-muted rounded-2xl rounded-tl-md px-3.5 py-2.5 w-fit max-w-full">
-                            <p className="text-sm text-foreground leading-relaxed line-clamp-3">
-                              {review.content}
-                            </p>
-                          </div>
+                          <p
+                            className="text-sm font-bold text-foreground truncate hover:underline w-fit"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLocation(`/profile/${review.userId}`);
+                            }}
+                          >
+                            {review.nickname}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{formatDate(review.createdAt)}</p>
                         </div>
+                        <span className="flex items-center gap-0.5 text-sm font-bold text-foreground shrink-0">
+                          <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                          {review.rating.toFixed(1)}
+                        </span>
                       </div>
+
+                      {/* 맛집 태그 — 어디에 대한 후기인지 */}
+                      <div className="flex items-center gap-1.5 mb-2 text-sm min-w-0">
+                        <UtensilsCrossed className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <span className="font-semibold text-foreground truncate">{review.restaurantName}</span>
+                        {category && (
+                          <span className="text-xs text-muted-foreground shrink-0">· {category}</span>
+                        )}
+                      </div>
+
+                      {/* 후기 본문 — 사진이 없을 땐 이 텍스트가 카드의 주인공 */}
+                      <p
+                        className={cn(
+                          "text-sm text-foreground leading-relaxed",
+                          photo ? "line-clamp-2" : "line-clamp-5"
+                        )}
+                      >
+                        {review.content}
+                      </p>
+
+                      {/* 사진은 후기 아래에 보조 콘텐츠로 — 있을 때만 */}
+                      {photo && (
+                        <div className="mt-3 rounded-xl overflow-hidden aspect-[4/3] bg-muted">
+                          <img
+                            src={photo}
+                            alt={review.restaurantName}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 );

@@ -150,10 +150,11 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId }: Resta
           </Button>
         </div>
 
-        {/* 대표 사진 — 네이버 검색으로 가져온 참고 사진(등록 시점 수집), 후기 사진과는 별개 */}
+        {/* 대표 사진 — 네이버 검색으로 가져온 참고 사진(등록 시점 수집), 후기 사진과는 별개.
+            화면 폭 꽉 채운 큰 히어로 이미지로 한 장씩 넘겨보게(여러 장이어도 다 볼 수 있음) */}
         {restaurant.imageUrls && restaurant.imageUrls.length > 0 && (
           <div
-            className="flex gap-2 overflow-x-auto px-4 mt-3 pb-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
+            className="flex overflow-x-auto mt-3 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
             data-testid="restaurant-photo-gallery"
           >
             {restaurant.imageUrls.map((url, i) => (
@@ -161,7 +162,7 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId }: Resta
                 key={i}
                 src={url}
                 alt={`${restaurant.name} 사진 ${i + 1}`}
-                className="h-44 w-64 flex-shrink-0 snap-start rounded-2xl object-cover bg-muted"
+                className="w-full aspect-[4/3] flex-shrink-0 snap-center object-cover bg-muted"
                 data-testid={`restaurant-photo-${i}`}
               />
             ))}
@@ -288,9 +289,9 @@ export default function RestaurantDetailPage({ onNavigate, restaurantId }: Resta
                           </div>
 
                           {review.imageUrls.length > 0 && (
-                            <div className="flex gap-1.5 mt-2 overflow-x-auto">
+                            <div className="flex gap-2 mt-2.5 overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
                               {review.imageUrls.map((url, i) => (
-                                <div key={url} className="w-24 h-24 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                                <div key={url} className="w-40 h-40 rounded-xl overflow-hidden bg-muted flex-shrink-0 snap-start">
                                   <img
                                     src={url}
                                     alt={`${review.nickname}님의 후기 사진 ${i + 1}`}

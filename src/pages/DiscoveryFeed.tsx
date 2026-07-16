@@ -266,7 +266,8 @@ export default function DiscoveryFeed({ onNavigate }: DiscoveryFeedProps = {}) {
           ) : (
             <div className="space-y-4">
               {visibleReviews.map((review) => {
-                const photo = review.imageUrls[0] ?? fallbackPhotoByRestaurant.get(review.restaurantId);
+                const fallback = fallbackPhotoByRestaurant.get(review.restaurantId);
+                const photos = review.imageUrls.length > 0 ? review.imageUrls : fallback ? [fallback] : [];
                 const category = categoryByRestaurant.get(review.restaurantId);
                 return (
                   <Card
@@ -323,22 +324,40 @@ export default function DiscoveryFeed({ onNavigate }: DiscoveryFeedProps = {}) {
                       <p
                         className={cn(
                           "text-sm text-foreground leading-relaxed",
-                          photo ? "line-clamp-2" : "line-clamp-5"
+                          photos.length > 0 ? "line-clamp-2" : "line-clamp-5"
                         )}
                       >
                         {review.content}
                       </p>
 
-                      {/* 사진은 후기 아래에 보조 콘텐츠로 — 있을 때만 */}
-                      {photo && (
+                      {/* 사진은 후기 아래에 보조 콘텐츠로 — 여러 장이면 옆으로 넘겨볼 수 있게 */}
+                      {photos.length === 1 ? (
                         <div className="mt-3 rounded-xl overflow-hidden aspect-[4/3] bg-muted">
                           <img
-                            src={photo}
+                            src={photos[0]}
                             alt={review.restaurantName}
                             className="w-full h-full object-cover"
                           />
                         </div>
-                      )}
+                      ) : photos.length > 1 ? (
+                        <div
+                          className="mt-3 flex gap-2 overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
+                          data-testid={`feed-review-gallery-${review.id}`}
+                        >
+                          {photos.map((url, i) => (
+                            <div
+                              key={url + i}
+                              className="w-[75%] shrink-0 snap-start rounded-xl overflow-hidden aspect-[4/3] bg-muted"
+                            >
+                              <img
+                                src={url}
+                                alt={`${review.restaurantName} 사진 ${i + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
                     </CardContent>
                   </Card>
                 );
